@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -43,7 +43,7 @@ type UploaderResponseData struct {
 func main() {
 	http.HandleFunc("/redacted/ratio", checkRatio)
 	http.HandleFunc("/redacted/uploader", checkUploader)
-	log.Fatal(http.ListenAndServe(":42135", nil))
+	log.Fatal(http.ListenAndServe("127.0.0.1:42135", nil))
 }
 
 func checkRatio(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +56,7 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Received request from %s", r.RemoteAddr)
 
 	// Read JSON payload from the request body
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -87,7 +87,7 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -125,7 +125,7 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 	// Log request received
 	log.Printf("Received request from %s", r.RemoteAddr)
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -156,7 +156,7 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
