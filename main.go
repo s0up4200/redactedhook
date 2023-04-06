@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-type RequestData struct {
+type RatioRequestData struct {
 	ID       int     `json:"id"`
 	APIKey   string  `json:"apikey"`
 	MinRatio float64 `json:"minratio"`
@@ -21,7 +21,7 @@ type UploaderRequestData struct {
 	Usernames string `json:"usernames"`
 }
 
-type ResponseData struct {
+type RatioResponseData struct {
 	Response struct {
 		Stats struct {
 			Ratio float64 `json:"ratio"`
@@ -31,6 +31,7 @@ type ResponseData struct {
 
 type UploaderResponseData struct {
 	Status   string `json:"status"`
+	Error    string `json:"error"`
 	Response struct {
 		Torrent struct {
 			Username string `json:"username"`
@@ -61,7 +62,7 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var requestData RequestData
+	var requestData RatioRequestData
 	err = json.Unmarshal(body, &requestData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -91,7 +92,7 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var responseData ResponseData
+	var responseData RatioResponseData
 	err = json.Unmarshal(respBody, &responseData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -163,8 +164,17 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check for a "failure" status in the JSON response
+	if responseData.Status == "failure" {
+		log.Printf("JSON response indicates a failure: %s\n", responseData.Error)
+		http.Error(w, responseData.Error, http.StatusBadRequest)
+		return
+	}
+
 	username := responseData.Response.Torrent.Username
 	usernames := strings.Split(requestData.Usernames, ",")
+
+	log.Printf("Found uploader: %s\n", username) // Print the uploader's username
 
 	for _, uname := range usernames {
 		if uname == username {
