@@ -6,12 +6,19 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type RequestData struct {
 	ID       int     `json:"id"`
 	APIKey   string  `json:"apikey"`
 	MinRatio float64 `json:"minratio"`
+}
+
+type UploaderRequestData struct {
+	ID        int    `json:"id"`
+	APIKey    string `json:"apikey"`
+	Usernames string `json:"usernames"`
 }
 
 type ResponseData struct {
@@ -22,12 +29,22 @@ type ResponseData struct {
 	} `json:"response"`
 }
 
+type UploaderResponseData struct {
+	Status   string `json:"status"`
+	Response struct {
+		Torrent struct {
+			Username string `json:"username"`
+		} `json:"torrent"`
+	} `json:"response"`
+}
+
 func main() {
-	http.HandleFunc("/redacted/ratio", ratioCheckerHandler)
+	http.HandleFunc("/redacted/ratio", checkRatio)
+	http.HandleFunc("/redacted/uploader", checkUploader)
 	log.Fatal(http.ListenAndServe(":42135", nil))
 }
 
-func ratioCheckerHandler(w http.ResponseWriter, r *http.Request) {
+func checkRatio(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is supported", http.StatusBadRequest)
 		return
@@ -91,4 +108,72 @@ func ratioCheckerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK) // HTTP status code 200
 		log.Printf("Returned ratio (%f) is equal to or above minratio (%f), responding with status 200\n", ratio, minRatio)
 	}
+}
+
+func checkUploader(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST method is supported", http.StatusBadRequest)
+		return
+	}
+
+	// Log request received
+	log.Printf("Received request from %s", r.RemoteAddr)
+
+	body, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var requestData UploaderRequestData
+	err = json.Unmarshal(body, &requestData)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	endpoint := fmt.Sprintf("https://redacted.ch/ajax.php?action=torrent&id=%d", requestData.ID)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	req.Header.Set("Authorization", requestData.APIKey)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var responseData UploaderResponseData
+	err = json.Unmarshal(respBody, &responseData)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	username := responseData.Response.Torrent.Username
+	usernames := strings.Split(requestData.Usernames, ",")
+
+	for _, uname := range usernames {
+		if uname == username {
+			w.WriteHeader(http.StatusIMUsed + 1) // HTTP status code 226
+			log.Printf("Uploader (%s) is blacklisted, responding with status 226\n", username)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK) // HTTP status code 200
+	log.Printf("Uploader not in blacklist, responding with status 200\n")
 }
