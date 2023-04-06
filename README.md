@@ -55,24 +55,23 @@ To use RedactedHook, send POST requests to the following endpoints:
 
 #### Check Ratio
 
-- Endpoint: /redacted/ratio
+- Endpoint: `http://127.0.0.1:42135/redacted/ratio`
 - Method: POST
 - Expected HTTP Status: 200
 
 **JSON Payload:**
 
 ```json
-
 {
-  "user_id": "USER_ID",
-  "apikey": "API_KEY",
-  "minratio": "MINIMUM_RATIO"
+"user_id": "USER_ID",
+"apikey": "API_KEY",
+"minratio": "MINIMUM_RATIO"
 }
 ```
 
 #### Check Uploader
 
-- Endpoint: /redacted/uploader
+- Endpoint: `http://127.0.0.1:42135/redacted/uploader`
 - Method: POST
 - Expected HTTP Status: 200
 
