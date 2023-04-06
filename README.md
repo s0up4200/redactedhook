@@ -51,10 +51,11 @@ To use RedactedHook, send POST requests to the following endpoints:
 
 #### Check Ratio
 
-Endpoint: /redacted/ratio
-Method: POST
-Expected HTTP Status: 200
-JSON Payload:
+- Endpoint: /redacted/ratio
+- Method: POST
+- Expected HTTP Status: 200
+
+**JSON Payload:**
 
 ```json
 
@@ -67,16 +68,17 @@ JSON Payload:
 
 #### Check Uploader
 
-Endpoint: /redacted/uploader
-Method: POST
-Expected HTTP Status: 200
-JSON Payload:
+- Endpoint: /redacted/uploader
+- Method: POST
+- Expected HTTP Status: 200
+
+**JSON Payload:**
 
 ```json
 
 {
-  "id": "TORRENT_ID",
+  "id": "{{.TorrentID}}",
   "apikey": "API_KEY",
-  "usernames": "BLACKLISTED_USERNAMES"
+  "usernames": "BLACKLISTED_USER1,BLACKLISTED_USER2,BLACKLISTED_USER3"
 }
 ```
