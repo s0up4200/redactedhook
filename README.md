@@ -79,6 +79,6 @@ To use RedactedHook, send POST requests to the following endpoints:
 {
   "id": "{{.TorrentID}}",
   "apikey": "API_KEY",
-  "usernames": "BLACKLISTED_USER1,BLACKLISTED_USER2,BLACKLISTED_USER3"
+  "uploaders": "BLACKLISTED_USER1,BLACKLISTED_USER2,BLACKLISTED_USER3"
 }
 ```
