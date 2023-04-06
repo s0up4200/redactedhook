@@ -63,9 +63,9 @@ To use RedactedHook, send POST requests to the following endpoints:
 
 ```json
 {
-"user_id": "USER_ID",
-"apikey": "API_KEY",
-"minratio": "MINIMUM_RATIO"
+  "user_id": "USER_ID",
+  "apikey": "API_KEY",
+  "minratio": "MINIMUM_RATIO"
 }
 ```
 
