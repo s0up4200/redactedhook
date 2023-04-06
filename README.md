@@ -1,9 +1,11 @@
 RedactedHook is a webhook service designed to check user ratio and uploader names on Redacted. It provides a simple and efficient way to validate if a user has a specific minimum ratio or if an uploader is blacklisted.
-Features
 
-    Check if a user's ratio meets a specified minimum value
-    Verify if an uploader's name is on a provided blacklist
-    Easy to integrate with other applications via webhook
+## Features
+
+- Check if a user's ratio meets a specified minimum value
+- Verify if an uploader's name is on a provided blacklist
+- Easy to integrate with other applications via webhook
+- Works great with [autobrr](https://github.com/autobrr/autobrr)!
 
 ## Getting Started
 
