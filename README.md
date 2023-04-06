@@ -1,3 +1,5 @@
+# RedactedHook
+
 RedactedHook is a webhook service designed to check user ratio and uploader names on Redacted. It provides a simple and efficient way to validate if a user has a specific minimum ratio or if an uploader is blacklisted.
 
 ## Features
