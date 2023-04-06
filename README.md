@@ -13,17 +13,21 @@ RedactedHook is a webhook service designed to check user ratio and uploader name
 
 To run RedactedHook, you'll need:
 
-1. Go 1.20 or later installed
+1. Go 1.20 or later installed (only if building from source)
 2. Access to Redacted
 
 ### Installation
 
+#### Using precompiled binaries
+
+Download the appropriate binary for your platform from the [releases](https://github.com/s0up4200/RedactedHook/releases/latest) page.
+
+#### Building from source
+
 Clone the repository:
 
 ```bash
-
 git clone https://github.com/s0up4200/RedactedHook.git
-
 ```
 
 Navigate to the project directory:
