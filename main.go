@@ -6,19 +6,20 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 type RatioRequestData struct {
-	ID       int     `json:"id"`
-	APIKey   string  `json:"apikey"`
-	MinRatio float64 `json:"minratio"`
+	ID       string `json:"user_id"`
+	APIKey   string `json:"apikey"`
+	MinRatio string `json:"minratio"`
 }
 
 type UploaderRequestData struct {
-	ID        int    `json:"id"`
+	ID        string `json:"id"`
 	APIKey    string `json:"apikey"`
-	Usernames string `json:"usernames"`
+	Usernames string `json:"uploaders"`
 }
 
 type RatioResponseData struct {
@@ -69,7 +70,7 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	endpoint := fmt.Sprintf("https://redacted.ch/ajax.php?action=user&id=%d", requestData.ID)
+	endpoint := fmt.Sprintf("https://redacted.ch/ajax.php?action=user&id=%s", requestData.ID)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", endpoint, nil)
@@ -100,7 +101,11 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ratio := responseData.Response.Stats.Ratio
-	minRatio := requestData.MinRatio
+	minRatio, err := strconv.ParseFloat(requestData.MinRatio, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	if ratio < minRatio {
 		w.WriteHeader(http.StatusIMUsed) // HTTP status code 226
@@ -134,7 +139,7 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	endpoint := fmt.Sprintf("https://redacted.ch/ajax.php?action=torrent&id=%d", requestData.ID)
+	endpoint := fmt.Sprintf("https://redacted.ch/ajax.php?action=torrent&id=%s", requestData.ID)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", endpoint, nil)
