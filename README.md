@@ -13,8 +13,8 @@ RedactedHook is a webhook service designed to check user ratio and uploader name
 
 To run RedactedHook, you'll need:
 
-Go 1.20 or later installed
-Access to Redacted API
+1. Go 1.20 or later installed
+2. Access to Redacted
 
 ### Installation
 
