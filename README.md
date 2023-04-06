@@ -22,7 +22,7 @@ Clone the repository:
 
 ```bash
 
-git clone https://github.com/yourusername/RedactedHook.git
+git clone https://github.com/s0up4200/RedactedHook.git
 
 ```
 
