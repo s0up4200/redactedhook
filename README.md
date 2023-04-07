@@ -65,9 +65,9 @@ To use RedactedHook, send POST requests to the following endpoints:
 
 ```json
 {
-  "user_id": "USER_ID",
+  "user_id": USER_ID,
   "apikey": "API_KEY",
-  "minratio": "MINIMUM_RATIO"
+  "minratio": MINIMUM_RATIO
 }
 ```
 
@@ -82,7 +82,7 @@ To use RedactedHook, send POST requests to the following endpoints:
 ```json
 
 {
-  "id": "{{.TorrentID}}",
+  "torrent_id": {{.TorrentID}},
   "apikey": "API_KEY",
   "uploaders": "BLACKLISTED_USER1,BLACKLISTED_USER2,BLACKLISTED_USER3"
 }
