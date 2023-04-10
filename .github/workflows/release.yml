@@ -29,9 +29,10 @@ jobs:
       - name: Set DOCKER_TAG variable
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "DOCKER_TAG=pr-${{ github.event.number }}" >> $GITHUB_ENV
+            echo "DOCKER_TAG=pr_${{ github.event.number }}" >> $GITHUB_ENV
           else
-            echo "DOCKER_TAG=$(echo ${{ github.ref }} | sed 's/refs\/tags\///')" >> $GITHUB_ENV
+            DOCKER_TAG=$(echo "${{ github.ref }}" | sed 's/refs\/tags\///' | tr "[:upper:]" "[:lower:]" | tr -c "[:alnum:]-." "_")
+            echo "DOCKER_TAG=${DOCKER_TAG}" >> $GITHUB_ENV
           fi
 
       - name: Build Docker image
