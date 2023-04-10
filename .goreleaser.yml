@@ -1,9 +1,9 @@
-project_name: redactedhook
+project_name: RedactedHook
 
-#before:
-#  hooks:
-#    - go mod tidy
-#    - go generate ./...
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
 
 builds:
   - main: ./main.go
