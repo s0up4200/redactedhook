@@ -44,16 +44,15 @@ jobs:
             echo "DOCKER_TAG=${DOCKER_TAG}" >> $GITHUB_ENV
           fi
 
-
       - name: Build Docker image
-        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'pull_request'
         run: docker build -t ghcr.io/s0up4200/redactedhook:${DOCKER_TAG} .
 
       - name: Login to GitHub Container Registry
         run: echo "${{ secrets.GORELEASER_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Push Docker image
-        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'pull_request'
         run: |
           docker tag ghcr.io/s0up4200/redactedhook:${DOCKER_TAG} ghcr.io/s0up4200/redactedhook:${DOCKER_TAG}
           docker tag ghcr.io/s0up4200/redactedhook:${DOCKER_TAG} ghcr.io/s0up4200/redactedhook:latest
@@ -72,4 +71,4 @@ jobs:
           version: latest
           args: --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.GORELEASER_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GORE
