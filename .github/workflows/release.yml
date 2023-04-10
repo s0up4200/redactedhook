@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - '*'
+    branches:
+      - main
+      - develop
   pull_request:
     branches:
       - main
@@ -26,16 +29,25 @@ jobs:
       #- name: Run tests
       #  run: go test ./...
 
+      - name: Set DOCKER_TAG variable
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "DOCKER_TAG=pr-${{ github.event.number }}" >> $GITHUB_ENV
+          else
+            echo "DOCKER_TAG=$(echo ${{ github.ref }} | sed 's/refs\/heads\///')" >> $GITHUB_ENV
+          fi
+      
       - name: Build Docker image
-        if: github.event_name == 'pull_request'
-        run: docker build -t ghcr.io/s0up4200/redactedhook:${{ github.sha }} .
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'))
+        run: docker build -t ghcr.io/s0up4200/redactedhook:${DOCKER_TAG} .
+      
+      - name: Push Docker image
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'))
+        run: docker push ghcr.io/s0up4200/redactedhook:${DOCKER_TAG}
+
 
       - name: Login to GitHub Container Registry
         run: echo "${{ secrets.GORELEASER_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Push Docker image
-        if: github.event_name == 'pull_request'
-        run: docker push ghcr.io/s0up4200/redactedhook:${{ github.sha }}
 
       - name: Run Goreleaser
         uses: goreleaser/goreleaser-action@v2
