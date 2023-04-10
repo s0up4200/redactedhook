@@ -1,3 +1,5 @@
+# .goreleaser.yml
+
 project_name: RedactedHook
 
 before:
@@ -45,3 +47,17 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
+
+dockers:
+  - image_templates:
+      - "ghcr.io/s0up4200/{{ .ProjectName }}:{{ .Version }}"
+      - "ghcr.io/s0up4200/{{ .ProjectName }}:latest"
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.Commit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source=https://github.com/s0up4200/{{.ProjectName}}"
+    goarch: amd64
+    goos: linux
