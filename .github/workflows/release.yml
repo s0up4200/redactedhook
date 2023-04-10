@@ -47,7 +47,7 @@ jobs:
 
       - name: Push Docker image
         if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-        run: docker push ghcr.io/s0up4200/redactedhook:${DOCKER_TAG}
+        run: docker push ghcr.io/s0up4200/redactedhook:${DOCKER_TAG} --force
 
       - name: Run Goreleaser
         uses: goreleaser/goreleaser-action@v2
