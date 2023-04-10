@@ -8,7 +8,7 @@ ARG BUILDTIME
 
 RUN apk add --no-cache git make build-base tzdata
 
-ENV SERVICE=autobrr
+ENV SERVICE=redactedhook
 
 WORKDIR /src
 
