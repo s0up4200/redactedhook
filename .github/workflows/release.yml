@@ -51,11 +51,14 @@ jobs:
           docker tag ghcr.io/s0up4200/redactedhook:${DOCKER_TAG} ghcr.io/s0up4200/redactedhook:latest
           docker push ghcr.io/s0up4200/redactedhook:${DOCKER_TAG}
           if [ "${{ github.ref }}" == "main" ]; then
-            docker push ghcr.io/s0up4200/redactedhook:main --all-tags
+            docker manifest rm ghcr.io/s0up4200/redactedhook:main
+            docker manifest create ghcr.io/s0up4200/redactedhook:main ghcr.io/s0up4200/redactedhook:${DOCKER_TAG}
+            docker manifest push ghcr.io/s0up4200/redactedhook:main
           elif [ "${{ github.ref }}" == "develop" ]; then
-            docker push ghcr.io/s0up4200/redactedhook:develop --all-tags
+            docker manifest rm ghcr.io/s0up4200/redactedhook:develop
+            docker manifest create ghcr.io/s0up4200/redactedhook:develop ghcr.io/s0up4200/redactedhook:${DOCKER_TAG}
+            docker manifest push ghcr.io/s0up4200/redactedhook:develop
           fi
-
 
       - name: Run Goreleaser
         uses: goreleaser/goreleaser-action@v2
