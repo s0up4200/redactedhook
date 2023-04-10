@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -12,35 +12,26 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type RatioRequestData struct {
-	ID       int     `json:"user_id"`
-	APIKey   string  `json:"apikey"`
-	MinRatio float64 `json:"minratio"`
+type RequestData struct {
+	ID        int     `json:"id"`
+	APIKey    string  `json:"apikey"`
+	MinRatio  float64 `json:"minratio,omitempty"`
+	TorrentID int     `json:"torrent_id,omitempty"`
+	Usernames string  `json:"uploaders,omitempty"`
 }
 
-type UploaderRequestData struct {
-	ID        int    `json:"torrent_id"`
-	APIKey    string `json:"apikey"`
-	Usernames string `json:"uploaders"`
+type ResponseData struct {
+	Status          string `json:"status"`
+	Error           string `json:"error"`
+	TorrentUploader struct {
+		Username string `json:"username"`
+	} `json:"torrentUploader"`
+	Stats struct {
+		Ratio float64 `json:"ratio"`
+	} `json:"stats"`
 }
 
-type RatioResponseData struct {
-	Response struct {
-		Stats struct {
-			Ratio float64 `json:"ratio"`
-		} `json:"stats"`
-	} `json:"response"`
-}
-
-type UploaderResponseData struct {
-	Status   string `json:"status"`
-	Error    string `json:"error"`
-	Response struct {
-		Torrent struct {
-			Username string `json:"username"`
-		} `json:"torrent"`
-	} `json:"response"`
-}
+var httpClient = &http.Client{}
 
 func main() {
 	// Configure zerolog to use colored output
@@ -66,14 +57,14 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("Received request from %s", r.RemoteAddr)
 
 	// Read JSON payload from the request body
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var requestData RatioRequestData
+	var requestData RequestData
 	err = json.Unmarshal(body, &requestData)
 	if err != nil {
 		log.Debug().Msgf("Failed to unmarshal JSON payload: %s", err.Error())
@@ -83,7 +74,6 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 
 	endpoint := fmt.Sprintf("https://redacted.ch/ajax.php?action=user&id=%d", requestData.ID)
 
-	client := &http.Client{}
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -91,27 +81,40 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Header.Set("Authorization", requestData.APIKey)
 
-	resp, err := client.Do(req)
+	if requestData.APIKey == "" {
+		log.Error().Msg("API key is empty")
+		http.Error(w, "API key is empty", http.StatusBadRequest)
+		return
+	}
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var responseData RatioResponseData
+	var responseData ResponseData
 	err = json.Unmarshal(respBody, &responseData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	ratio := responseData.Response.Stats.Ratio
+	// Check for a "failure" status in the JSON response
+	if responseData.Status == "failure" {
+		log.Error().Msgf("JSON response indicates a failure: %s\n", responseData.Error)
+		http.Error(w, responseData.Error, http.StatusBadRequest)
+		return
+	}
+
+	ratio := responseData.Stats.Ratio
 	minRatio := requestData.MinRatio
 
 	if ratio < minRatio {
@@ -133,14 +136,15 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 	// Log request received
 	log.Debug().Msgf("Received request from %s", r.RemoteAddr)
 
-	body, err := ioutil.ReadAll(r.Body)
+	// Read JSON payload from the request body
+	body, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var requestData UploaderRequestData
+	var requestData RequestData
 	err = json.Unmarshal(body, &requestData)
 	if err != nil {
 		log.Debug().Msgf("Failed to unmarshal JSON payload: %s", err.Error())
@@ -148,9 +152,8 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Make the request to the API
 	endpoint := fmt.Sprintf("https://redacted.ch/ajax.php?action=torrent&id=%d", requestData.ID)
-
-	client := &http.Client{}
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -158,20 +161,28 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Header.Set("Authorization", requestData.APIKey)
 
-	resp, err := client.Do(req)
+	if requestData.APIKey == "" {
+		log.Error().Msg("API key is empty")
+		http.Error(w, "API key is empty", http.StatusBadRequest)
+		return
+	}
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	// Read the response body
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var responseData UploaderResponseData
+	// Unmarshal the response JSON into the appropriate struct
+	var responseData ResponseData
 	err = json.Unmarshal(respBody, &responseData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -180,12 +191,13 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 
 	// Check for a "failure" status in the JSON response
 	if responseData.Status == "failure" {
-		log.Error().Str("JSON response indicates a failure: %s\n", responseData.Error)
+		log.Error().Msgf("JSON response indicates a failure: %s\n", responseData.Error)
 		http.Error(w, responseData.Error, http.StatusBadRequest)
 		return
 	}
 
-	username := responseData.Response.Torrent.Username
+	// Check if the uploader is in the blacklist
+	username := responseData.TorrentUploader.Username
 	usernames := strings.Split(requestData.Usernames, ",")
 
 	log.Debug().Msgf("Found uploader: %s", username) // Print the uploader's username
@@ -198,6 +210,7 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// If uploader is not in the blacklist, respond with HTTP status 200
 	w.WriteHeader(http.StatusOK) // HTTP status code 200
 	log.Debug().Msg("Uploader not in blacklist, responding with status 200")
 }
