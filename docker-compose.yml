@@ -1,0 +1,7 @@
+version: "3.7"
+services:
+  redactedhook:
+    container_name: redactedhook
+    image: ghcr.io/s0up4200/redactedhook:latest
+    user: 1000:1000
+    network_mode: host
