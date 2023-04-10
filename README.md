@@ -87,3 +87,9 @@ To use RedactedHook, send POST requests to the following endpoints:
   "uploaders": "BLACKLISTED_USER1,BLACKLISTED_USER2,BLACKLISTED_USER3"
 }
 ```
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"user_id": 3855, "apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "minratio": 1.0}' http://127.0.0.1:42135/redacted/ratio
+```
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"torrent_id": 3931392, "apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "uploaders": "blacklisted_user1,blacklisted_user2,blacklisted_user3"}' http://127.0.0.1:42135/redacted/uploader
