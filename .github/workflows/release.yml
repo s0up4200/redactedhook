@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - '*'
+  pull_request:
+    branches:
+      - main
+      - develop
 
 jobs:
   goreleaser:
@@ -23,10 +27,11 @@ jobs:
       #  run: go test ./...
 
       - name: Login to GitHub Container Registry
-        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        run: echo "${{ secrets.GORELEASER_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Run Goreleaser
         uses: goreleaser/goreleaser-action@v2
+        if: github.event_name == 'push'
         with:
           version: latest
           args: --clean
