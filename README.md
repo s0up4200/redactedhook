@@ -1,13 +1,14 @@
 # RedactedHook
 
-RedactedHook is a webhook companion service for autobrr designed to check user ratio and name of uploaders on Redacted. It provides a simple and efficient way to validate if a user has a specific minimum ratio or if an uploader is blacklisted.
+RedactedHook is a webhook companion service for [autobrr](https://github.com/autobrr/autobrr) designed to check name of uploaders and your ratio on Redacted. It provides a simple and efficient way to validate if an uploader is blacklisted or if you want to stop racing in case your ratio falls below a certain point.
 
 ## Features
 
-- Check if a user's ratio meets a specified minimum value
 - Verify if an uploader's name is on a provided blacklist
+- Check if a user's ratio meets a specified minimum value
 - Easy to integrate with other applications via webhook
-- Works great with [autobrr](https://github.com/autobrr/autobrr)!
+
+It was made with [autobrr](https://github.com/autobrr/autobrr) in mind.
 
 ## Getting Started
 
@@ -20,36 +21,46 @@ To run RedactedHook, you'll need:
 
 ### Installation
 
+#### Docker
+
+```bash
+docker pull ghcr.io/s0up4200/redactedhook:latest
+```
+
 #### Using precompiled binaries
 
 Download the appropriate binary for your platform from the [releases](https://github.com/s0up4200/RedactedHook/releases/latest) page.
 
 #### Building from source
 
-Clone the repository:
+1. Clone the repository:
 
 ```bash
 git clone https://github.com/s0up4200/RedactedHook.git
 ```
 
-Navigate to the project directory:
+2. Navigate to the project directory:
 
 ```bash
 cd RedactedHook
 ```
-Build the project:
+3. Build the project:
 
 ```go
 go build
 ```
-
-Run the compiled binary:
-
-```bash
-./RedactedHook
+or
+```shell
+make build
 ```
 
-The RedactedHook server will now be running on port `42135`.
+4. Run the compiled binary:
+
+```bash
+./bin/RedactedHook
+```
+
+The RedactedHook server will now be running on `127.0.0.1:42135`.
 
 ### Usage
 
@@ -71,6 +82,10 @@ To use RedactedHook, send POST requests to the following endpoints:
 }
 ```
 
+`user_id` is the number in the URL when you visit your profile.
+
+`api_key` your Redacted API key. Needs user and torrents privileges.
+
 #### Check Uploader
 
 - Endpoint: `http://127.0.0.1:42135/redacted/uploader`
@@ -87,6 +102,12 @@ To use RedactedHook, send POST requests to the following endpoints:
   "uploaders": "BLACKLISTED_USER1,BLACKLISTED_USER2,BLACKLISTED_USER3"
 }
 ```
+
+`torrent_id` will automatically be filled when you use `{{.TorrentID}}` - a macro supported by autobrr.
+
+`api_key` your Redacted API key. Needs user and torrents privileges.
+
+#### curl commands for easy testing
 
 ```bash
 curl -X POST -H "Content-Type: application/json" -d '{"user_id": 3855, "apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "minratio": 1.0}' http://127.0.0.1:42135/redacted/ratio
