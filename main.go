@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -12,32 +12,21 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type RatioRequestData struct {
-	ID       int     `json:"user_id"`
-	APIKey   string  `json:"apikey"`
-	MinRatio float64 `json:"minratio"`
+type RequestData struct {
+	UserID    int     `json:"user_id"`
+	TorrentID int     `json:"torrent_id"`
+	APIKey    string  `json:"apikey"`
+	MinRatio  float64 `json:"minratio"`
+	Uploaders string  `json:"uploaders"`
 }
 
-type UploaderRequestData struct {
-	ID        int    `json:"torrent_id"`
-	APIKey    string `json:"apikey"`
-	Usernames string `json:"uploaders"`
-}
-
-type RatioResponseData struct {
+type ResponseData struct {
 	Status   string `json:"status"`
 	Error    string `json:"error"`
 	Response struct {
 		Stats struct {
 			Ratio float64 `json:"ratio"`
 		} `json:"stats"`
-	} `json:"response"`
-}
-
-type UploaderResponseData struct {
-	Status   string `json:"status"`
-	Error    string `json:"error"`
-	Response struct {
 		Torrent struct {
 			Username string `json:"username"`
 		} `json:"torrent"`
@@ -65,17 +54,17 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log request received
-	log.Debug().Msgf("Received request from %s", r.RemoteAddr)
+	log.Info().Msgf("Received ratio request from %s", r.RemoteAddr)
 
 	// Read JSON payload from the request body
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var requestData RatioRequestData
+	var requestData RequestData
 	err = json.Unmarshal(body, &requestData)
 	if err != nil {
 		log.Debug().Msgf("Failed to unmarshal JSON payload: %s", err.Error())
@@ -83,7 +72,7 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	endpoint := fmt.Sprintf("https://redacted.ch/ajax.php?action=user&id=%d", requestData.ID)
+	endpoint := fmt.Sprintf("https://redacted.ch/ajax.php?action=user&id=%d", requestData.UserID)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", endpoint, nil)
@@ -100,13 +89,13 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var responseData RatioResponseData
+	var responseData ResponseData
 	err = json.Unmarshal(respBody, &responseData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -140,16 +129,16 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log request received
-	log.Debug().Msgf("Received request from %s", r.RemoteAddr)
+	log.Info().Msgf("Received uploader request from %s", r.RemoteAddr)
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var requestData UploaderRequestData
+	var requestData RequestData
 	err = json.Unmarshal(body, &requestData)
 	if err != nil {
 		log.Debug().Msgf("Failed to unmarshal JSON payload: %s", err.Error())
@@ -157,7 +146,7 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	endpoint := fmt.Sprintf("https://redacted.ch/ajax.php?action=torrent&id=%d", requestData.ID)
+	endpoint := fmt.Sprintf("https://redacted.ch/ajax.php?action=torrent&id=%d", requestData.TorrentID)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", endpoint, nil)
@@ -180,13 +169,13 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var responseData UploaderResponseData
+	var responseData ResponseData
 	err = json.Unmarshal(respBody, &responseData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -201,7 +190,7 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username := responseData.Response.Torrent.Username
-	usernames := strings.Split(requestData.Usernames, ",")
+	usernames := strings.Split(requestData.Uploaders, ",")
 
 	log.Debug().Msgf("Found uploader: %s", username) // Print the uploader's username
 
