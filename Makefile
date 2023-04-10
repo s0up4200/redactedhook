@@ -1,33 +1,37 @@
-# Makefile
+.PHONY: test
+.POSIX:
+.SUFFIXES:
 
-# Variables
-BINARY_NAME = RedactedHook
-BINDIR = ./bin
-GOCMD = go
-GOBUILD = $(GOCMD) build
-GOCLEAN = $(GOCMD) clean
-GOTEST = $(GOCMD) test
-GOGET = $(GOCMD) get
-VERSION = $(shell git describe --tags)
-LDFLAGS = -ldflags "-X main.Version=$(VERSION)"
-DOCKER_IMAGE_NAME = redactedhook
-DOCKER_TAG = latest
+GIT_COMMIT := $(shell git rev-parse HEAD 2> /dev/null)
+GIT_TAG := $(shell git describe --abbrev=0 --tags)
 
-# Targets
-.PHONY: all build clean test docker-build
+SERVICE = redactedhook
+GO = go
+RM = rm
+GOFLAGS = "-X main.commit=$(GIT_COMMIT) -X main.version=$(GIT_TAG)"
+PREFIX = /usr/local
+BINDIR = bin
 
-all: build
+all: clean build
 
-build:
-	mkdir -p $(BINDIR)
-	$(GOBUILD) $(LDFLAGS) -o $(BINDIR)/$(BINARY_NAME)
-
-clean:
-	$(GOCLEAN)
-	rm -rf $(BINDIR)
+deps:
+	go mod download
 
 test:
-	$(GOTEST) -v ./...
+	go test $(go list ./... | grep -v test/integration)
 
-docker-build:
-	docker build -t $(DOCKER_IMAGE_NAME):$(DOCKER_TAG) .
+build: deps build/app
+
+build/app:
+	go build -ldflags $(GOFLAGS) -o bin/$(SERVICE) ./main.go
+
+build/docker:
+	docker build -t redactedhook:dev -f Dockerfile . --build-arg GIT_TAG=$(GIT_TAG) --build-arg GIT_COMMIT=$(GIT_COMMIT)
+
+clean:
+	$(RM) -rf bin
+
+install: all
+	echo $(DESTDIR)$(PREFIX)/$(BINDIR)
+	mkdir -p $(DESTDIR)$(PREFIX)/$(BINDIR)
+	cp -f bin/$(SERVICE) $(DESTDIR)$(PREFIX)/$(BINDIR)

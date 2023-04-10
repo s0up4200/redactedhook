@@ -1,34 +1,45 @@
-# Dockerfile
 
-# Use the official Golang image as the base image
-FROM golang:1.17 as builder
+# build app
+FROM golang:1.20-alpine3.16 AS app-builder
 
-# Set the working directory
-WORKDIR /app
+ARG VERSION=dev
+ARG REVISION=dev
+ARG BUILDTIME
 
-# Copy go.mod and go.sum files
+RUN apk add --no-cache git make build-base tzdata
+
+ENV SERVICE=autobrr
+
+WORKDIR /src
+
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
 
-# Copy source code
-COPY . .
+COPY . ./
 
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o RedactedHook .
+#ENV GOOS=linux
+#ENV CGO_ENABLED=0
 
-# Use a minimal Alpine image to run the binary
+RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o bin/redactedhook ./main.go
+
+# build runner
 FROM alpine:latest
 
-# Set the working directory
-WORKDIR /root/
+LABEL org.opencontainers.image.source = "https://github.com/s0up4200/redactedhook"
 
-# Copy the binary from the builder image
-COPY --from=builder /app/RedactedHook .
+ENV HOME="/config" \
+XDG_CONFIG_HOME="/config" \
+XDG_DATA_HOME="/config"
 
-# Expose the port
+RUN apk --no-cache add ca-certificates curl tzdata jq
+
+WORKDIR /app
+
+VOLUME /config
+
+COPY --from=app-builder /src/bin/redactedhook /usr/local/bin/
+
 EXPOSE 42135
 
-# Command to run the binary
-CMD ["./RedactedHook"]
+ENTRYPOINT ["/usr/local/bin/redactedhook"]
+#CMD ["--config", "/config"]

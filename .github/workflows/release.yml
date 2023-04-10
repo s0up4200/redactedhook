@@ -1,49 +1,128 @@
-name: Release
+name: build
 
 on:
   push:
+    branches:
+      - "main"
+      - "develop"
     tags:
-      - '*'
+      - 'v*'
   pull_request:
-    types: [opened, synchronize]
+
+permissions:
+  contents: write
+  packages: write
 
 jobs:
-  build:
+
+  goreleaserbuild:
+    name: Build Go binaries
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    needs: [web, test]
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Set DOCKER_TAG variable
-        run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "DOCKER_TAG=pr_${{ github.event.number }}" >> $GITHUB_ENV
-          elif [ "${{ github.ref_type }}" == "tag" ]; then
-            DOCKER_TAG=$(echo "${{ github.ref }}" | sed 's/refs\/tags\///' | tr "[:upper:]" "[:lower:]" | tr -c "[:alnum:]-." "_")
-            echo "DOCKER_TAG=${DOCKER_TAG}" >> $GITHUB_ENV
-          fi
-
-      - name: Build Docker image
-        if: startsWith(github.ref, 'refs/tags/')
-        run: docker build -t ghcr.io/s0up4200/redactedhook:${DOCKER_TAG} .
-
-      - name: Login to GitHub Container Registry
-        if: startsWith(github.ref, 'refs/tags/')
-        run: echo "${{ secrets.GORELEASER_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Push Docker image
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          docker tag ghcr.io/s0up4200/redactedhook:${DOCKER_TAG} ghcr.io/s0up4200/redactedhook:${DOCKER_TAG}
-          docker tag ghcr.io/s0up4200/redactedhook:${DOCKER_TAG} ghcr.io/s0up4200/redactedhook:latest
-          docker push ghcr.io/s0up4200/redactedhook:${DOCKER_TAG}
-          docker push ghcr.io/s0up4200/redactedhook:latest
-
-      - name: Run Goreleaser
-        uses: goreleaser/goreleaser-action@v2
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: actions/checkout@v3
         with:
+          fetch-depth: 0
+
+#     1.20 is the last version to support Windows < 10, Server < 2016, and MacOS < 1.15.
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.20.1'
+          cache: true
+
+      - name: Run GoReleaser build
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          distribution: goreleaser
           version: latest
-          args: --clean
+          args: release --rm-dist --skip-publish
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_TOKEN }}
+
+      - name: Upload assets
+        uses: actions/upload-artifact@v3
+        with:
+          name: autobrr
+          path: dist/*
+
+  goreleaser:
+    name: Build & publish binaries and images
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    needs: [web, test]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+#     1.20 is the last version to support Windows < 10, Server < 2016, and MacOS < 1.15.
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.20.1'
+          cache: true
+
+      - name: Run GoReleaser build and publish tags
+        uses: goreleaser/goreleaser-action@v3
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GORELEASER_TOKEN }}
+
+      - name: Upload assets
+        uses: actions/upload-artifact@v3
+        with:
+          name: autobrr
+          path: dist/*
+
+  docker:
+    name: Build and publish Docker images
+    runs-on: ubuntu-latest
+    needs: [web, test]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GORELEASER_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/autobrr/autobrr
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and publish image
+        id: docker_build
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ./ci.Dockerfile
+          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
+          push: ${{ github.repository_owner == 'autobrr' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            REVISION=${{ github.event.pull_request.head.sha }}
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
