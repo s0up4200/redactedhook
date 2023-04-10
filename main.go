@@ -115,7 +115,7 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 
 	// Check for a "failure" status in the JSON response
 	if responseData.Status == "failure" {
-		log.Error().Msgf("JSON response indicates a failure: %s\n", responseData.Error)
+		log.Error().Msgf("JSON response indicates a failure: %s", responseData.Error)
 		http.Error(w, responseData.Error, http.StatusBadRequest)
 		return
 	}
@@ -195,7 +195,7 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 
 	// Check for a "failure" status in the JSON response
 	if responseData.Status == "failure" {
-		log.Error().Msgf("JSON response indicates a failure: %s\n", responseData.Error)
+		log.Error().Msgf("JSON response indicates a failure: %s", responseData.Error)
 		http.Error(w, responseData.Error, http.StatusBadRequest)
 		return
 	}
