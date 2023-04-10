@@ -33,6 +33,10 @@ jobs:
       - name: Login to GitHub Container Registry
         run: echo "${{ secrets.GORELEASER_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
+      - name: Push Docker image
+        if: github.event_name == 'pull_request'
+        run: docker push ghcr.io/s0up4200/redactedhook:${{ github.sha }}
+
       - name: Run Goreleaser
         uses: goreleaser/goreleaser-action@v2
         if: github.event_name == 'push'
