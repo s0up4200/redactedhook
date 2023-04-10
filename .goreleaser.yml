@@ -50,8 +50,8 @@ changelog:
 
 dockers:
   - image_templates:
-      - "ghcr.io/s0up4200/{{ .ProjectName }}:{{ .Version }}"
-      - "ghcr.io/s0up4200/{{ .ProjectName }}:latest"
+      - "ghcr.io/s0up4200/redactedhook/{{ .ProjectName }}:{{ .Version }}"
+      - "ghcr.io/s0up4200/redactedhook/{{ .ProjectName }}:latest"
     dockerfile: Dockerfile
     build_flag_templates:
       - "--label=org.opencontainers.image.created={{.Date}}"

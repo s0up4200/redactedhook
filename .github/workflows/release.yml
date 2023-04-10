@@ -39,10 +39,10 @@ jobs:
       
       - name: Build Docker image
         if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'))
-        run: docker build -t ghcr.io/s0up4200/redactedhook:${DOCKER_TAG} .
-      
+        run: docker build -t ghcr.io/s0up4200/RedactedHook/redactedhook:${DOCKER_TAG} .
+
       - name: Login to GitHub Container Registry
-        run: echo "${{ secrets.GORELEASER_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        run: docker push ghcr.io/s0up4200/RedactedHook/redactedhook:${DOCKER_TAG}
 
       - name: Push Docker image
         if: github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'))
