@@ -26,6 +26,10 @@ jobs:
       #- name: Run tests
       #  run: go test ./...
 
+      - name: Build Docker image
+        if: github.event_name == 'pull_request'
+        run: docker build -t ghcr.io/s0up4200/RedactedHook:${{ github.sha }} .
+
       - name: Login to GitHub Container Registry
         run: echo "${{ secrets.GORELEASER_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
