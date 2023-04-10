@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - '*'
+    branches:
+      - main
+      - develop
   pull_request:
     branches:
       - main
@@ -29,18 +32,21 @@ jobs:
             echo "DOCKER_TAG=pr_${{ github.event.number }}" >> $GITHUB_ENV
           else
             DOCKER_TAG=$(echo "${{ github.ref }}" | sed 's/refs\/tags\///' | tr "[:upper:]" "[:lower:]" | tr -c "[:alnum:]-." "_")
+            if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref_type }}" == "tag" ]; then
+              DOCKER_TAG="latest"
+            fi
             echo "DOCKER_TAG=${DOCKER_TAG}" >> $GITHUB_ENV
           fi
 
       - name: Build Docker image
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
         run: docker build -t ghcr.io/s0up4200/redactedhook:${DOCKER_TAG} .
 
       - name: Login to GitHub Container Registry
         run: echo "${{ secrets.GORELEASER_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Push Docker image
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
         run: docker push ghcr.io/s0up4200/redactedhook:${DOCKER_TAG}
 
       - name: Run Goreleaser
