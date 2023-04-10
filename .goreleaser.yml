@@ -1,6 +1,6 @@
 # .goreleaser.yml
 
-project_name: RedactedHook
+project_name: redactedhook
 
 before:
   hooks:
