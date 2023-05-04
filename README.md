@@ -76,8 +76,6 @@ make build
 ./bin/RedactedHook
 ```
 
-The RedactedHook server will now be running on `127.0.0.1:42135`.
-
 ### Usage
 
 To use RedactedHook, send POST requests to the following endpoints:
