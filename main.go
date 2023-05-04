@@ -34,14 +34,25 @@ type ResponseData struct {
 }
 
 func main() {
-	// Configure zerolog to use colored output
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05", NoColor: false})
 
 	http.HandleFunc("/redacted/ratio", checkRatio)
 	http.HandleFunc("/redacted/uploader", checkUploader)
-	log.Info().Msg("Starting server on 127.0.0.1:42135")
-	err := http.ListenAndServe("127.0.0.1:42135", nil)
+
+	address := os.Getenv("SERVER_ADDRESS")
+	if address == "" {
+		address = "0.0.0.0"
+	}
+	port := os.Getenv("SERVER_PORT")
+	if port == "" {
+		port = "42135"
+	}
+
+	// Start the server
+	serverAddr := address + ":" + port
+	log.Info().Msg("Starting server on " + serverAddr)
+	err := http.ListenAndServe(serverAddr, nil)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to start server")
 	}
