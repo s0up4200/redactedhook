@@ -43,11 +43,11 @@ archives:
 release:
   prerelease: auto
   footer: |
-    **Full Changelog**: https://github.com/s0up4200/redactedhook/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/raneydazed/redactedhook/compare/{{ .PreviousTag }}...{{ .Tag }}
     
     ## Docker images
     
-    - `docker pull ghcr.io/s0up4200/redactedhook:{{ .Tag }}`
+    - `docker pull ghcr.io/raneydazed/redactedhook:{{ .Tag }}`
 
 checksum:
   name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'

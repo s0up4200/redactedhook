@@ -40,8 +40,8 @@ func main() {
 
 	http.HandleFunc("/redacted/ratio", checkRatio)
 	http.HandleFunc("/redacted/uploader", checkUploader)
-	log.Info().Msg("Starting server on 127.0.0.1:42135")
-	err := http.ListenAndServe("127.0.0.1:42135", nil)
+	log.Info().Msg("Starting server on 0.0.0.0:42135")
+	err := http.ListenAndServe("0.0.0.0:42135", nil)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to start server")
 	}
