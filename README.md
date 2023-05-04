@@ -27,6 +27,22 @@ To run RedactedHook, you'll need:
 docker pull ghcr.io/s0up4200/redactedhook:latest
 ```
 
+**docker compose**
+
+```docker
+version: "3.7"
+services:
+  redactedhook:
+    container_name: redactedhook
+    image: ghcr.io/s0up4200/redactedhook:latest
+    user: 1000:1000
+    #environment:
+    #  - SERVER_ADDRESS=0.0.0.0 # binds to 127.0.0.1 by default
+    #  - SERVER_PORT=42135 # defaults to 42135
+    ports:
+      - "42135:42135"
+```
+
 #### Using precompiled binaries
 
 Download the appropriate binary for your platform from the [releases](https://github.com/s0up4200/RedactedHook/releases/latest) page.
