@@ -12,6 +12,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	APIEndpointBase = "https://redacted.ch/ajax.php"
+	PathRatio       = "/redacted/ratio"
+	PathUploader    = "/redacted/uploader"
+)
+
 type RequestData struct {
 	UserID    int     `json:"user_id"`
 	TorrentID int     `json:"torrent_id"`
@@ -37,8 +43,8 @@ func main() {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05", NoColor: false})
 
-	http.HandleFunc("/redacted/ratio", checkRatio)
-	http.HandleFunc("/redacted/uploader", checkUploader)
+	http.HandleFunc(PathRatio, checkRatio)
+	http.HandleFunc(PathUploader, checkUploader)
 
 	address := os.Getenv("SERVER_ADDRESS")
 	if address == "" {
@@ -56,6 +62,14 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to start server")
 	}
+}
+
+func checkAPIResponse(resp *http.Response) error {
+	contentType := resp.Header.Get("Content-Type")
+	if !strings.Contains(contentType, "application/json") {
+		return fmt.Errorf("unexpected content type: %s", contentType)
+	}
+	return nil
 }
 
 func checkRatio(w http.ResponseWriter, r *http.Request) {
@@ -83,7 +97,7 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	endpoint := fmt.Sprintf("https://redacted.ch/ajax.php?action=user&id=%d", requestData.UserID)
+	endpoint := fmt.Sprintf("%s?action=user&id=%d", APIEndpointBase, requestData.UserID)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", endpoint, nil)
@@ -99,6 +113,13 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+
+	err = checkAPIResponse(resp)
+	if err != nil {
+		log.Error().Msgf("API response indicates maintenance or unexpected content: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -157,7 +178,13 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	endpoint := fmt.Sprintf("https://redacted.ch/ajax.php?action=torrent&id=%d", requestData.TorrentID)
+	if requestData.Uploaders == "" {
+		log.Error().Msg("Uploaders list is empty")
+		http.Error(w, "Uploaders list is empty", http.StatusBadRequest)
+		return
+	}
+
+	endpoint := fmt.Sprintf("%s?action=torrent&id=%d", APIEndpointBase, requestData.TorrentID)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", endpoint, nil)
@@ -179,6 +206,13 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+
+	err = checkAPIResponse(resp)
+	if err != nil {
+		log.Error().Msgf("API response indicates maintenance or unexpected content: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -207,8 +241,8 @@ func checkUploader(w http.ResponseWriter, r *http.Request) {
 
 	for _, uname := range usernames {
 		if uname == username {
-			w.WriteHeader(http.StatusIMUsed + 1) // HTTP status code 226
-			log.Debug().Msgf("Uploader (%s) is blacklisted, responding with status 226", username)
+			w.WriteHeader(http.StatusIMUsed + 1) // HTTP status code 227
+			log.Debug().Msgf("Uploader (%s) is blacklisted, responding with status 227", username)
 			return
 		}
 	}
