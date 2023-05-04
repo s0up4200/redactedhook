@@ -4,8 +4,8 @@ services:
     container_name: redactedhook
     image: ghcr.io/s0up4200/redactedhook:latest
     user: 1000:1000
-    #environment:
-    #  - SERVER_ADDRESS=0.0.0.0 # binds to 0.0.0.0 by default
-    #  - SERVER_PORT=42135 # defaults to 42135
+    environment:
+      - SERVER_ADDRESS=0.0.0.0 # binds to 127.0.0.1 by default
+      - SERVER_PORT=42135 # defaults to 42135
     ports:
       - "42135:42135"

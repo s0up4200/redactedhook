@@ -42,7 +42,7 @@ func main() {
 
 	address := os.Getenv("SERVER_ADDRESS")
 	if address == "" {
-		address = "0.0.0.0"
+		address = "127.0.0.1"
 	}
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
