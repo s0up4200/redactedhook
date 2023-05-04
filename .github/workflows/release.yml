@@ -98,7 +98,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ghcr.io/s0up4200/redactedhook
+          images: ghcr.io/raneydazed/redactedhook
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -113,7 +113,7 @@ jobs:
           context: .
           file: ./ci.Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
-          push: ${{ github.repository_owner == 's0up4200' }}
+          push: ${{ github.repository_owner == 'raneydazed' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
