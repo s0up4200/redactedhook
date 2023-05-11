@@ -14,28 +14,33 @@ import (
 
 const (
 	APIEndpointBase = "https://redacted.ch/ajax.php"
-	PathRatio       = "/redacted/ratio"
-	PathUploader    = "/redacted/uploader"
+	PathCheck       = "/check"
 )
 
 type RequestData struct {
-	UserID    int     `json:"user_id"`
-	TorrentID int     `json:"torrent_id"`
-	APIKey    string  `json:"apikey"`
-	MinRatio  float64 `json:"minratio"`
-	Uploaders string  `json:"uploaders"`
+	UserID      int     `json:"user_id,omitempty"`
+	TorrentID   int     `json:"torrent_id,omitempty"`
+	APIKey      string  `json:"apikey"`
+	MinRatio    float64 `json:"minratio,omitempty"`
+	Uploaders   string  `json:"uploaders,omitempty"`
+	RecordLabel string  `json:"record_labels,omitempty"`
+	Mode        string  `json:"mode,omitempty"`
 }
 
 type ResponseData struct {
 	Status   string `json:"status"`
 	Error    string `json:"error"`
 	Response struct {
-		Stats struct {
+		Username string `json:"username"`
+		Stats    struct {
 			Ratio float64 `json:"ratio"`
 		} `json:"stats"`
 		Torrent struct {
 			Username string `json:"username"`
 		} `json:"torrent"`
+		Group struct {
+			RecordLabel string `json:"recordLabel"`
+		} `json:"group"`
 	} `json:"response"`
 }
 
@@ -43,8 +48,7 @@ func main() {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05", NoColor: false})
 
-	http.HandleFunc(PathRatio, checkRatio)
-	http.HandleFunc(PathUploader, checkUploader)
+	http.HandleFunc(PathCheck, checkData)
 
 	address := os.Getenv("SERVER_ADDRESS")
 	if address == "" {
@@ -72,14 +76,51 @@ func checkAPIResponse(resp *http.Response) error {
 	return nil
 }
 
-func checkRatio(w http.ResponseWriter, r *http.Request) {
+func fetchTorrentData(torrentID int, apiKey string) (*ResponseData, error) {
+	endpoint := fmt.Sprintf("%s?action=torrent&id=%d", APIEndpointBase, torrentID)
+	req, err := http.NewRequest("GET", endpoint, nil)
+	req.Header.Set("Authorization", apiKey)
+
+	if err != nil {
+		return nil, err
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	err = checkAPIResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var responseData ResponseData
+	err = json.Unmarshal(respBody, &responseData)
+	if err != nil {
+		return nil, err
+	}
+
+	return &responseData, nil
+}
+
+func checkData(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is supported", http.StatusBadRequest)
 		return
 	}
 
+	var torrentData *ResponseData
+
 	// Log request received
-	log.Info().Msgf("Received ratio request from %s", r.RemoteAddr)
+	log.Info().Msgf("Received data request from %s", r.RemoteAddr)
 
 	// Read JSON payload from the request body
 	body, err := io.ReadAll(r.Body)
@@ -97,156 +138,127 @@ func checkRatio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	endpoint := fmt.Sprintf("%s?action=user&id=%d", APIEndpointBase, requestData.UserID)
-
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", endpoint, nil)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	req.Header.Set("Authorization", requestData.APIKey)
+	reqHeader := make(http.Header)
+	reqHeader.Set("Authorization", requestData.APIKey)
 
-	resp, err := client.Do(req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
+	// Check ratio
+	if requestData.UserID != 0 && requestData.MinRatio != 0 {
+		endpoint := fmt.Sprintf("%s?action=user&id=%d", APIEndpointBase, requestData.UserID)
+		req, err := http.NewRequest("GET", endpoint, nil)
+		req.Header = reqHeader
 
-	err = checkAPIResponse(resp)
-	if err != nil {
-		log.Error().Msgf("API response indicates maintenance or unexpected content: %s", err.Error())
-		http.Error(w, err.Error(), http.StatusServiceUnavailable)
-		return
-	}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+		resp, err := client.Do(req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
 
-	var responseData ResponseData
-	err = json.Unmarshal(respBody, &responseData)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+		err = checkAPIResponse(resp)
+		if err != nil {
+			log.Error().Msgf("API response indicates maintenance or unexpected content: %s", err.Error())
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			return
+		}
 
-	// Check for a "failure" status in the JSON response
-	if responseData.Status == "failure" {
-		log.Error().Msgf("JSON response indicates a failure: %s", responseData.Error)
-		http.Error(w, responseData.Error, http.StatusBadRequest)
-		return
-	}
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-	ratio := responseData.Response.Stats.Ratio
-	minRatio := requestData.MinRatio
+		var responseData ResponseData
+		err = json.Unmarshal(respBody, &responseData)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-	if ratio < minRatio {
-		w.WriteHeader(http.StatusIMUsed) // HTTP status code 226
-		log.Debug().Msgf("Returned ratio (%f) is below minratio (%f), responding with status 226", ratio, minRatio)
-	} else {
-		w.WriteHeader(http.StatusOK) // HTTP status code 200
-		log.Debug().Msgf("Returned ratio (%f) is equal to or above minratio (%f), responding with status 200", ratio, minRatio)
-	}
-}
+		// Check for a "failure" status in the JSON response
+		if responseData.Status == "failure" {
+			log.Error().Msgf("JSON response indicates a failure: %s", responseData.Error)
+			http.Error(w, responseData.Error, http.StatusBadRequest)
+			return
+		}
 
-func checkUploader(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		log.Debug().Msg("Non-POST method received")
-		http.Error(w, "Only POST method is supported", http.StatusBadRequest)
-		return
-	}
+		ratio := responseData.Response.Stats.Ratio
+		minRatio := requestData.MinRatio
+		username := responseData.Response.Username
 
-	// Log request received
-	log.Info().Msgf("Received uploader request from %s", r.RemoteAddr)
+		log.Debug().Msgf("MinRatio set to %.2f for %s", minRatio, username)
 
-	body, err := io.ReadAll(r.Body)
-	defer r.Body.Close()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		if ratio < minRatio {
+			w.WriteHeader(http.StatusIMUsed) // HTTP status code 226
+			log.Debug().Msgf("Returned ratio %.2f is below minratio %.2f for %s, responding with status 226", ratio, minRatio, username)
+			return
+		}
 	}
 
-	var requestData RequestData
-	err = json.Unmarshal(body, &requestData)
-	if err != nil {
-		log.Debug().Msgf("Failed to unmarshal JSON payload: %s", err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	// Check uploader
+	if requestData.TorrentID != 0 && requestData.Uploaders != "" {
+		if torrentData == nil {
+			torrentData, err = fetchTorrentData(requestData.TorrentID, requestData.APIKey)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
 
-	if requestData.Uploaders == "" {
-		log.Error().Msg("Uploaders list is empty")
-		http.Error(w, "Uploaders list is empty", http.StatusBadRequest)
-		return
-	}
+		username := torrentData.Response.Torrent.Username
+		usernames := strings.Split(requestData.Uploaders, ",")
 
-	endpoint := fmt.Sprintf("%s?action=torrent&id=%d", APIEndpointBase, requestData.TorrentID)
+		log.Debug().Msgf("Requested uploaders [%s]: %s", requestData.Mode, usernames)
 
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", endpoint, nil)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	req.Header.Set("Authorization", requestData.APIKey)
+		isListed := false
+		for _, uname := range usernames {
+			if uname == username {
+				isListed = true
+				break
+			}
+		}
 
-	if requestData.APIKey == "" {
-		log.Error().Msg("API key is empty")
-		http.Error(w, "API key is empty", http.StatusBadRequest)
-		return
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
-
-	err = checkAPIResponse(resp)
-	if err != nil {
-		log.Error().Msgf("API response indicates maintenance or unexpected content: %s", err.Error())
-		http.Error(w, err.Error(), http.StatusServiceUnavailable)
-		return
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	var responseData ResponseData
-	err = json.Unmarshal(respBody, &responseData)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Check for a "failure" status in the JSON response
-	if responseData.Status == "failure" {
-		log.Error().Msgf("JSON response indicates a failure: %s", responseData.Error)
-		http.Error(w, responseData.Error, http.StatusBadRequest)
-		return
-	}
-
-	username := responseData.Response.Torrent.Username
-	usernames := strings.Split(requestData.Uploaders, ",")
-
-	log.Debug().Msgf("Found uploader: %s", username) // Print the uploader's username
-
-	for _, uname := range usernames {
-		if uname == username {
+		if (requestData.Mode == "blacklist" && isListed) || (requestData.Mode == "whitelist" && !isListed) {
 			w.WriteHeader(http.StatusIMUsed + 1) // HTTP status code 227
-			log.Debug().Msgf("Uploader (%s) is blacklisted, responding with status 227", username)
+			log.Debug().Msgf("Uploader (%s) is not allowed, responding with status 227", username)
+			return
+		}
+	}
+
+	// Check record label
+	if requestData.TorrentID != 0 && requestData.RecordLabel != "" {
+		if torrentData == nil {
+			torrentData, err = fetchTorrentData(requestData.TorrentID, requestData.APIKey)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		recordLabel := torrentData.Response.Group.RecordLabel
+		requestedRecordLabels := strings.Split(requestData.RecordLabel, ",")
+		log.Debug().Msgf("Requested record labels: %v", requestedRecordLabels)
+
+		isRecordLabelPresent := false
+		for _, rLabel := range requestedRecordLabels {
+			if rLabel == recordLabel {
+				isRecordLabelPresent = true
+				break
+			}
+		}
+
+		if !isRecordLabelPresent {
+			w.WriteHeader(http.StatusIMUsed + 2) // HTTP status code 228
+			log.Debug().Msgf("Record label (%s) is not in the requested record labels (%v), responding with status 228", recordLabel, requestedRecordLabels)
 			return
 		}
 	}
 
 	w.WriteHeader(http.StatusOK) // HTTP status code 200
-	log.Debug().Msg("Uploader not in blacklist, responding with status 200")
+	log.Debug().Msg("Conditions met, responding with status 200")
 }
