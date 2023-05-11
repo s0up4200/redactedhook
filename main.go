@@ -10,12 +10,16 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/time/rate"
 )
 
 const (
 	APIEndpointBase = "https://redacted.ch/ajax.php"
 	Pathhook        = "/redacted/hook"
 )
+
+// Rate limit requests to max 7 requests per 10 seconds
+var limiter = rate.NewLimiter(0.7, 7) // 10 requests per 10 seconds is the maximum rate allowed by RED, but lets be nice
 
 type RequestData struct {
 	UserID      int     `json:"user_id,omitempty"`
@@ -38,6 +42,7 @@ type ResponseData struct {
 		Torrent struct {
 			Username    string `json:"username"`
 			RecordLabel string `json:"remasterRecordLabel"`
+			//CatalogueNumber string `json:"remasterCatalogueNumber"`
 		} `json:"torrent"`
 	} `json:"response"`
 }
@@ -112,6 +117,13 @@ func fetchTorrentData(torrentID int, apiKey string) (*ResponseData, error) {
 func hookData(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is supported", http.StatusBadRequest)
+		return
+	}
+
+	// Use the rate limiter created outside the function
+	if !limiter.Allow() {
+		http.Error(w, "Too many requests", http.StatusTooManyRequests)
+		log.Warn().Msg("Too many requests")
 		return
 	}
 
