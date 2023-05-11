@@ -36,11 +36,9 @@ type ResponseData struct {
 			Ratio float64 `json:"ratio"`
 		} `json:"stats"`
 		Torrent struct {
-			Username string `json:"username"`
+			Username    string `json:"username"`
+			RecordLabel string `json:"remasterRecordLabel"`
 		} `json:"torrent"`
-		Group struct {
-			RecordLabel string `json:"recordLabel"`
-		} `json:"group"`
 	} `json:"response"`
 }
 
@@ -240,7 +238,7 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		recordLabel := torrentData.Response.Group.RecordLabel
+		recordLabel := torrentData.Response.Torrent.RecordLabel
 		requestedRecordLabels := strings.Split(requestData.RecordLabel, ",")
 		log.Debug().Msgf("Requested record labels: %v", requestedRecordLabels)
 
