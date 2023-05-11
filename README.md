@@ -8,8 +8,19 @@ RedactedHook is a webhook companion service for [autobrr](https://github.com/aut
 - Check for record labels. Useful for grabbing torrents from a specific label.
 - Check if a user's ratio meets a specified minimum value (additional API hit if used with the other two).
 - Easy to integrate with other applications via webhook.
+- Rate Limiter set to maximum 7 requests per 10 seconds.
 
 It was made with [autobrr](https://github.com/autobrr/autobrr) in mind.
+
+### Rate Limiter
+
+The rate limiter is designed to control the rate of incoming requests to the application. It is configured to allow a maximum of 7 requests within a 10-second period, ensuring that the application adheres to the API's rule of not making more than 10 requests every 10 seconds. Lets play it safe and not get banned.
+
+The rate limiter has two main components:
+
+1. Token refill rate: This is the rate at which tokens are added to the limiter. In our configuration, the token refill rate is set to 0.7 tokens per second, which results in 7 tokens being added every 10 seconds `(0.7 * 10 = 7)`.
+    
+2. Burst capacity: This is the maximum number of tokens that the limiter can hold. In our configuration, the burst capacity is set to 7, which means that the limiter can allow up to 7 requests at once if it has accumulated enough tokens.
 
 ## Getting Started
 
