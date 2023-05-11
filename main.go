@@ -14,7 +14,7 @@ import (
 
 const (
 	APIEndpointBase = "https://redacted.ch/ajax.php"
-	PathCheck       = "/check"
+	Pathhook        = "/redacted/hook"
 )
 
 type RequestData struct {
@@ -48,7 +48,7 @@ func main() {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05", NoColor: false})
 
-	http.HandleFunc(PathCheck, checkData)
+	http.HandleFunc(Pathhook, hookData)
 
 	address := os.Getenv("SERVER_ADDRESS")
 	if address == "" {
@@ -68,7 +68,7 @@ func main() {
 	}
 }
 
-func checkAPIResponse(resp *http.Response) error {
+func hookAPIResponse(resp *http.Response) error {
 	contentType := resp.Header.Get("Content-Type")
 	if !strings.Contains(contentType, "application/json") {
 		return fmt.Errorf("unexpected content type: %s", contentType)
@@ -92,7 +92,7 @@ func fetchTorrentData(torrentID int, apiKey string) (*ResponseData, error) {
 	}
 	defer resp.Body.Close()
 
-	err = checkAPIResponse(resp)
+	err = hookAPIResponse(resp)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func fetchTorrentData(torrentID int, apiKey string) (*ResponseData, error) {
 	return &responseData, nil
 }
 
-func checkData(w http.ResponseWriter, r *http.Request) {
+func hookData(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is supported", http.StatusBadRequest)
 		return
@@ -142,7 +142,7 @@ func checkData(w http.ResponseWriter, r *http.Request) {
 	reqHeader := make(http.Header)
 	reqHeader.Set("Authorization", requestData.APIKey)
 
-	// Check ratio
+	// hook ratio
 	if requestData.UserID != 0 && requestData.MinRatio != 0 {
 		endpoint := fmt.Sprintf("%s?action=user&id=%d", APIEndpointBase, requestData.UserID)
 		req, err := http.NewRequest("GET", endpoint, nil)
@@ -160,7 +160,7 @@ func checkData(w http.ResponseWriter, r *http.Request) {
 		}
 		defer resp.Body.Close()
 
-		err = checkAPIResponse(resp)
+		err = hookAPIResponse(resp)
 		if err != nil {
 			log.Error().Msgf("API response indicates maintenance or unexpected content: %s", err.Error())
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
@@ -180,7 +180,7 @@ func checkData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Check for a "failure" status in the JSON response
+		// hook for a "failure" status in the JSON response
 		if responseData.Status == "failure" {
 			log.Error().Msgf("JSON response indicates a failure: %s", responseData.Error)
 			http.Error(w, responseData.Error, http.StatusBadRequest)
@@ -200,7 +200,7 @@ func checkData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Check uploader
+	// hook uploader
 	if requestData.TorrentID != 0 && requestData.Uploaders != "" {
 		if torrentData == nil {
 			torrentData, err = fetchTorrentData(requestData.TorrentID, requestData.APIKey)
@@ -230,7 +230,7 @@ func checkData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Check record label
+	// hook record label
 	if requestData.TorrentID != 0 && requestData.RecordLabel != "" {
 		if torrentData == nil {
 			torrentData, err = fetchTorrentData(requestData.TorrentID, requestData.APIKey)
