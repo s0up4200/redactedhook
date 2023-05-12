@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -19,7 +20,7 @@ const (
 )
 
 // Rate limit requests to max 7 requests per 10 seconds
-var limiter = rate.NewLimiter(0.7, 7) // 10 requests per 10 seconds is the maximum rate allowed by RED, but lets be nice
+var limiter = rate.NewLimiter(rate.Every(1*time.Second), 10)
 
 type RequestData struct {
 	UserID      int     `json:"user_id,omitempty"`
