@@ -47,30 +47,6 @@ type ResponseData struct {
 	} `json:"response"`
 }
 
-func main() {
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05", NoColor: false})
-
-	http.HandleFunc(Pathhook, hookData)
-
-	address := os.Getenv("SERVER_ADDRESS")
-	if address == "" {
-		address = "127.0.0.1"
-	}
-	port := os.Getenv("SERVER_PORT")
-	if port == "" {
-		port = "42135"
-	}
-
-	// Start the server
-	serverAddr := address + ":" + port
-	log.Info().Msg("Starting server on " + serverAddr)
-	err := http.ListenAndServe(serverAddr, nil)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to start server")
-	}
-}
-
 func hookAPIResponse(resp *http.Response) error {
 	contentType := resp.Header.Get("Content-Type")
 	if !strings.Contains(contentType, "application/json") {
@@ -120,6 +96,47 @@ func fetchTorrentData(torrentID int, apiKey string) (*ResponseData, error) {
 	return &responseData, nil
 }
 
+func fetchUserData(userID int, apiKey string) (*ResponseData, error) {
+
+	if !limiter.Allow() {
+		log.Warn().Msg("Too many requests (fetchUserData)")
+		return nil, fmt.Errorf("too many requests")
+	}
+
+	endpoint := fmt.Sprintf("%s?action=user&id=%d", APIEndpointBase, userID)
+	req, err := http.NewRequest("GET", endpoint, nil)
+	req.Header.Set("Authorization", apiKey)
+
+	if err != nil {
+		return nil, err
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	err = hookAPIResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var responseData ResponseData
+	err = json.Unmarshal(respBody, &responseData)
+	if err != nil {
+		return nil, err
+	}
+
+	return &responseData, nil
+}
+
 func hookData(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is supported", http.StatusBadRequest)
@@ -127,6 +144,7 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var torrentData *ResponseData
+	var userData *ResponseData
 
 	// Log request received
 	log.Info().Msgf("Received data request from %s", r.RemoteAddr)
@@ -147,65 +165,23 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := &http.Client{}
 	reqHeader := make(http.Header)
 	reqHeader.Set("Authorization", requestData.APIKey)
 
 	// hook ratio
 	if requestData.UserID != 0 && requestData.MinRatio != 0 {
 
-		if !limiter.Allow() {
-			http.Error(w, "too many requests", http.StatusTooManyRequests)
-			log.Warn().Msg("Too many requests")
-			return
+		if userData == nil {
+			userData, err = fetchUserData(requestData.UserID, requestData.APIKey)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 
-		endpoint := fmt.Sprintf("%s?action=user&id=%d", APIEndpointBase, requestData.UserID)
-		req, err := http.NewRequest("GET", endpoint, nil)
-		req.Header = reqHeader
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer resp.Body.Close()
-
-		err = hookAPIResponse(resp)
-		if err != nil {
-			log.Error().Msgf("API response indicates maintenance or unexpected content: %s", err.Error())
-			http.Error(w, err.Error(), http.StatusServiceUnavailable)
-			return
-		}
-
-		respBody, err := io.ReadAll(resp.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		var responseData ResponseData
-		err = json.Unmarshal(respBody, &responseData)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// hook for a "failure" status in the JSON response
-		if responseData.Status == "failure" {
-			log.Error().Msgf("JSON response indicates a failure: %s", responseData.Error)
-			http.Error(w, responseData.Error, http.StatusBadRequest)
-			return
-		}
-
-		ratio := responseData.Response.Stats.Ratio
+		ratio := userData.Response.Stats.Ratio
 		minRatio := requestData.MinRatio
-		username := responseData.Response.Username
+		username := userData.Response.Username
 
 		log.Debug().Msgf("MinRatio set to %.2f for %s", minRatio, username)
 
@@ -277,4 +253,28 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK) // HTTP status code 200
 	log.Debug().Msg("Conditions met, responding with status 200")
+}
+
+func main() {
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05", NoColor: false})
+
+	http.HandleFunc(Pathhook, hookData)
+
+	address := os.Getenv("SERVER_ADDRESS")
+	if address == "" {
+		address = "127.0.0.1"
+	}
+	port := os.Getenv("SERVER_PORT")
+	if port == "" {
+		port = "42135"
+	}
+
+	// Start the server
+	serverAddr := address + ":" + port
+	log.Info().Msg("Starting server on " + serverAddr)
+	err := http.ListenAndServe(serverAddr, nil)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to start server")
+	}
 }
