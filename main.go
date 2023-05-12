@@ -80,6 +80,12 @@ func hookAPIResponse(resp *http.Response) error {
 }
 
 func fetchTorrentData(torrentID int, apiKey string) (*ResponseData, error) {
+
+	if !limiter.Allow() {
+		log.Warn().Msg("Too many requests (fetchTorrentData)")
+		return nil, fmt.Errorf("too many requests")
+	}
+
 	endpoint := fmt.Sprintf("%s?action=torrent&id=%d", APIEndpointBase, torrentID)
 	req, err := http.NewRequest("GET", endpoint, nil)
 	req.Header.Set("Authorization", apiKey)
@@ -120,13 +126,6 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Use the rate limiter created outside the function
-	if !limiter.Allow() {
-		http.Error(w, "Too many requests", http.StatusTooManyRequests)
-		log.Warn().Msg("Too many requests")
-		return
-	}
-
 	var torrentData *ResponseData
 
 	// Log request received
@@ -154,6 +153,13 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 
 	// hook ratio
 	if requestData.UserID != 0 && requestData.MinRatio != 0 {
+
+		if !limiter.Allow() {
+			http.Error(w, "too many requests", http.StatusTooManyRequests)
+			log.Warn().Msg("Too many requests")
+			return
+		}
+
 		endpoint := fmt.Sprintf("%s?action=user&id=%d", APIEndpointBase, requestData.UserID)
 		req, err := http.NewRequest("GET", endpoint, nil)
 		req.Header = reqHeader
