@@ -19,7 +19,7 @@ const (
 	Pathhook        = "/redacted/hook"
 )
 
-// Rate limit requests to max 7 requests per 10 seconds
+// Rate limit requests to max 10 requests per 10 seconds
 var limiter = rate.NewLimiter(rate.Every(1*time.Second), 10)
 
 type RequestData struct {
