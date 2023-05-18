@@ -1,26 +1,23 @@
 # build app
-FROM golang:1.20-alpine3.16 AS app-builder
+FROM --platform=$BUILDPLATFORM golang:1.20-alpine3.16 AS app-builder
 
-ARG VERSION=dev
-ARG REVISION=dev
-ARG BUILDTIME
-
-RUN apk add --no-cache git make build-base tzdata
+RUN apk add --no-cache git tzdata
 
 ENV SERVICE=redactedhook
 
 WORKDIR /src
-
-COPY go.mod go.sum ./
-RUN go mod download
-
 COPY . ./
 
-#ENV GOOS=linux
-#ENV CGO_ENABLED=0
+RUN --mount=target=. \
+    go mod download
 
-RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o bin/redactedhook ./main.go
+ARG VERSION=dev
+ARG REVISION=dev
+ARG BUILDTIME
+ARG TARGETOS TARGETARCH
 
+RUN --mount=target=. \
+    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o /out/bin/redactedhook ./main.go
 # build runner
 FROM alpine:latest
 
@@ -33,12 +30,8 @@ XDG_DATA_HOME="/config"
 RUN apk --no-cache add ca-certificates curl tzdata jq
 
 WORKDIR /app
-
 VOLUME /config
-
-COPY --from=app-builder /src/bin/redactedhook /usr/local/bin/
-
 EXPOSE 7474
-
 ENTRYPOINT ["/usr/local/bin/redactedhook"]
-#CMD ["--config", "/config"]
+
+COPY --from=app-builder /out/bin/redactedhook /usr/local/bin/
