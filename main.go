@@ -43,6 +43,7 @@ type ResponseData struct {
 		Torrent struct {
 			Username    string `json:"username"`
 			RecordLabel string `json:"remasterRecordLabel"`
+			ReleaseName string `json:"filePath"`
 			//CatalogueNumber string `json:"remasterCatalogueNumber"`
 		} `json:"torrent"`
 	} `json:"response"`
@@ -235,8 +236,10 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		}
 
 		recordLabel := torrentData.Response.Torrent.RecordLabel
+		releaseName := torrentData.Response.Torrent.ReleaseName
 		requestedRecordLabels := strings.Split(requestData.RecordLabel, ",")
-		log.Debug().Msgf("Requested record labels: %v", requestedRecordLabels)
+		log.Debug().Msgf("Checking release: %s", releaseName)
+		//log.Debug().Msgf("Requested record labels: %v", requestedRecordLabels)
 
 		isRecordLabelPresent := false
 		for _, rLabel := range requestedRecordLabels {
@@ -248,7 +251,7 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 
 		if !isRecordLabelPresent {
 			w.WriteHeader(http.StatusIMUsed + 2) // HTTP status code 228
-			log.Debug().Msgf("Record label (%s) is not in the requested record labels (%v), responding with status 228", recordLabel, requestedRecordLabels)
+			log.Debug().Msgf("The record label '%s' is not included in the requested record labels: %v. Responding with status code 228.", recordLabel, requestedRecordLabels)
 			return
 		}
 	}
