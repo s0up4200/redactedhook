@@ -40,11 +40,14 @@ type ResponseData struct {
 		Stats    struct {
 			Ratio float64 `json:"ratio"`
 		} `json:"stats"`
+		Group struct {
+			Name string `json:"name"`
+		} `json:"group"`
 		Torrent struct {
-			Username    string `json:"username"`
-			RecordLabel string `json:"remasterRecordLabel"`
-			ReleaseName string `json:"filePath"`
-			//CatalogueNumber string `json:"remasterCatalogueNumber"`
+			Username        string `json:"username"`
+			RecordLabel     string `json:"remasterRecordLabel"`
+			ReleaseName     string `json:"filePath"`
+			CatalogueNumber string `json:"remasterCatalogueNumber"`
 		} `json:"torrent"`
 	} `json:"response"`
 }
@@ -205,6 +208,9 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		//name := torrentData.Response.Group.Name
+		//releaseName := torrentData.Response.Torrent.ReleaseName
+		//TorrentID := requestData.TorrentID
 		username := torrentData.Response.Torrent.Username
 		usernames := strings.Split(requestData.Uploaders, ",")
 
@@ -236,9 +242,32 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		}
 
 		recordLabel := torrentData.Response.Torrent.RecordLabel
-		releaseName := torrentData.Response.Torrent.ReleaseName
+		catalogueNumber := torrentData.Response.Torrent.CatalogueNumber
+		name := torrentData.Response.Group.Name
+		//releaseName := torrentData.Response.Torrent.ReleaseName
+		TorrentID := requestData.TorrentID
 		requestedRecordLabels := strings.Split(requestData.RecordLabel, ",")
-		log.Debug().Msgf("Checking release: %s", releaseName)
+
+		var labelAndCatalogue string
+
+		if recordLabel == "" && catalogueNumber == "" {
+			labelAndCatalogue = ""
+		} else if recordLabel == "" {
+			labelAndCatalogue = fmt.Sprintf(" (Cat#: %s)", catalogueNumber)
+		} else if catalogueNumber == "" {
+			labelAndCatalogue = fmt.Sprintf(" (Label: %s)", recordLabel)
+		} else {
+			labelAndCatalogue = fmt.Sprintf(" (Label: %s - Cat#: %s)", recordLabel, catalogueNumber)
+		}
+
+		log.Debug().Msgf("Checking release: %s%s (TorrentID: %d)", name, labelAndCatalogue, TorrentID)
+
+		if recordLabel == "" {
+			log.Debug().Msgf("No record label found for release: %s. Responding with status code 228.", name)
+			w.WriteHeader(http.StatusIMUsed + 2) // HTTP status code 228
+			return
+		}
+
 		//log.Debug().Msgf("Requested record labels: %v", requestedRecordLabels)
 
 		isRecordLabelPresent := false
