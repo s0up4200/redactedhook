@@ -51,7 +51,7 @@ type ResponseData struct {
 func hookAPIResponse(resp *http.Response) error {
 	contentType := resp.Header.Get("Content-Type")
 	if !strings.Contains(contentType, "application/json") {
-		log.Warn().Msgf("Unexpected content type: %s, likely wrong API key", contentType)
+		log.Warn().Msgf("Unexpected content type: %s, likely down for maintenance", contentType)
 		return fmt.Errorf("unexpected content type: %s", contentType)
 	}
 	return nil
