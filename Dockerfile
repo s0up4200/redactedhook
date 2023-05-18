@@ -1,4 +1,5 @@
 
+
 # build app
 FROM golang:1.20-alpine3.16 AS app-builder
 
@@ -39,7 +40,7 @@ VOLUME /config
 
 COPY --from=app-builder /src/bin/redactedhook /usr/local/bin/
 
-EXPOSE 42135
+EXPOSE 7474
 
-ENTRYPOINT ["/usr/local/bin/redactedhook"]
+ENTRYPOINT ["/usr/local/bin/redactedhook", "--config", "/config"]
 #CMD ["--config", "/config"]
