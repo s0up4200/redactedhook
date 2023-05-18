@@ -32,6 +32,6 @@ RUN apk --no-cache add ca-certificates curl tzdata jq
 WORKDIR /app
 VOLUME /config
 EXPOSE 7474
-ENTRYPOINT ["/usr/local/bin/redactedhook", "--config", "/config"]
+ENTRYPOINT ["/usr/local/bin/redactedhook"]
 
 COPY --from=app-builder /out/bin/redactedhook /usr/local/bin/
