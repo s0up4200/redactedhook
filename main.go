@@ -22,10 +22,10 @@ const (
 // Rate limit requests to max 10 requests per 10 seconds
 var limiter = rate.NewLimiter(rate.Every(1*time.Second), 10)
 
-var (
-	version = "dev"
-	commit  = "none"
-)
+//var (
+//	version = "dev"
+//	commit  = "none"
+//)
 
 type RequestData struct {
 	UserID      int     `json:"user_id,omitempty"`
@@ -293,7 +293,7 @@ func main() {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05", NoColor: false})
 
-	log.Info().Msgf("RedactedHook version %s, commit %s", version, commit[:7])
+	//log.Info().Msgf("RedactedHook version %s, commit %s", version, commit[:7])
 
 	http.HandleFunc(Pathhook, hookData)
 
