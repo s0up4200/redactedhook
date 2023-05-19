@@ -53,11 +53,27 @@ type ResponseData struct {
 }
 
 func hookAPIResponse(resp *http.Response) error {
-	contentType := resp.Header.Get("Content-Type")
-	if !strings.Contains(contentType, "application/json") {
-		log.Warn().Msgf("Unexpected content type: %s, likely down for maintenance", contentType)
-		return fmt.Errorf("unexpected content type: %s", contentType)
+
+	// Read JSON payload from the response body
+	body, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		log.Error().Msgf("Failed to read response body: %s", err.Error())
+		return err
 	}
+
+	var responseData ResponseData
+	err = json.Unmarshal(body, &responseData)
+	if err != nil {
+		log.Error().Msgf("Failed to unmarshal JSON response: %s", err.Error())
+		return err
+	}
+
+	if responseData.Status != "success" {
+		log.Warn().Msgf("Received API response from RED with status '%s' and error message: '%s'", responseData.Status, responseData.Error)
+		return fmt.Errorf("API error: %s", responseData.Error)
+	}
+
 	return nil
 }
 
