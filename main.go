@@ -53,63 +53,47 @@ type ResponseData struct {
 }
 
 func hookAPIResponse(resp *http.Response) error {
-	contentType := resp.Header.Get("Content-Type")
-	if !strings.Contains(contentType, "application/json") {
-		log.Warn().Msgf("Unexpected content type: %s, likely down for maintenance", contentType)
-		return fmt.Errorf("unexpected content type: %s", contentType)
+
+	// Read JSON payload from the response body
+	body, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		log.Error().Msgf("Failed to read response body: %s", err.Error())
+		return err
 	}
+
+	var responseData ResponseData
+	err = json.Unmarshal(body, &responseData)
+	if err != nil {
+		log.Error().Msgf("Failed to unmarshal JSON response: %s", err.Error())
+		return err
+	}
+
+	if responseData.Status != "success" {
+		log.Warn().Msgf("Received API response from RED with status '%s' and error message: '%s'", responseData.Status, responseData.Error)
+		return fmt.Errorf("API error: %s", responseData.Error)
+	}
+
 	return nil
 }
 
 func fetchTorrentData(torrentID int, apiKey string) (*ResponseData, error) {
-
-	if !limiter.Allow() {
-		log.Warn().Msg("Too many requests (fetchTorrentData)")
-		return nil, fmt.Errorf("too many requests")
-	}
-
 	endpoint := fmt.Sprintf("%s?action=torrent&id=%d", APIEndpointBase, torrentID)
-	req, err := http.NewRequest("GET", endpoint, nil)
-	req.Header.Set("Authorization", apiKey)
-
-	if err != nil {
-		return nil, err
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	err = hookAPIResponse(resp)
-	if err != nil {
-		return nil, err
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var responseData ResponseData
-	err = json.Unmarshal(respBody, &responseData)
-	if err != nil {
-		return nil, err
-	}
-
-	return &responseData, nil
+	return fetchData(endpoint, apiKey)
 }
 
 func fetchUserData(userID int, apiKey string) (*ResponseData, error) {
+	endpoint := fmt.Sprintf("%s?action=user&id=%d", APIEndpointBase, userID)
+	return fetchData(endpoint, apiKey)
+}
+
+func fetchData(endpoint string, apiKey string) (*ResponseData, error) {
 
 	if !limiter.Allow() {
-		log.Warn().Msg("Too many requests (fetchUserData)")
+		log.Warn().Msg("Too many requests")
 		return nil, fmt.Errorf("too many requests")
 	}
 
-	endpoint := fmt.Sprintf("%s?action=user&id=%d", APIEndpointBase, userID)
 	req, err := http.NewRequest("GET", endpoint, nil)
 	req.Header.Set("Authorization", apiKey)
 
