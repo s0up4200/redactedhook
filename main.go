@@ -22,6 +22,11 @@ const (
 // Rate limit requests to max 10 requests per 10 seconds
 var limiter = rate.NewLimiter(rate.Every(1*time.Second), 10)
 
+var (
+	version = "dev"
+	commit  = "none"
+)
+
 type RequestData struct {
 	UserID      int     `json:"user_id,omitempty"`
 	TorrentID   int     `json:"torrent_id,omitempty"`
@@ -52,31 +57,6 @@ type ResponseData struct {
 	} `json:"response"`
 }
 
-func hookAPIResponse(resp *http.Response) error {
-
-	// Read JSON payload from the response body
-	body, err := io.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil {
-		log.Error().Msgf("Failed to read response body: %s", err.Error())
-		return err
-	}
-
-	var responseData ResponseData
-	err = json.Unmarshal(body, &responseData)
-	if err != nil {
-		log.Error().Msgf("Failed to unmarshal JSON response: %s", err.Error())
-		return err
-	}
-
-	if responseData.Status != "success" {
-		log.Warn().Msgf("Received API response from RED with status '%s' and error message: '%s'", responseData.Status, responseData.Error)
-		return fmt.Errorf("API error: %s", responseData.Error)
-	}
-
-	return nil
-}
-
 func fetchTorrentData(torrentID int, apiKey string) (*ResponseData, error) {
 
 	if !limiter.Allow() {
@@ -92,17 +72,14 @@ func fetchTorrentData(torrentID int, apiKey string) (*ResponseData, error) {
 		return nil, err
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
-	err = hookAPIResponse(resp)
-	if err != nil {
-		return nil, err
-	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -113,6 +90,11 @@ func fetchTorrentData(torrentID int, apiKey string) (*ResponseData, error) {
 	err = json.Unmarshal(respBody, &responseData)
 	if err != nil {
 		return nil, err
+	}
+
+	if responseData.Status != "success" {
+		log.Warn().Msgf("Received API response from RED with status '%s' and error message: '%s'", responseData.Status, responseData.Error)
+		return nil, fmt.Errorf("API error: %s", responseData.Error)
 	}
 
 	return &responseData, nil
@@ -133,17 +115,14 @@ func fetchUserData(userID int, apiKey string) (*ResponseData, error) {
 		return nil, err
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
-	err = hookAPIResponse(resp)
-	if err != nil {
-		return nil, err
-	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -154,6 +133,11 @@ func fetchUserData(userID int, apiKey string) (*ResponseData, error) {
 	err = json.Unmarshal(respBody, &responseData)
 	if err != nil {
 		return nil, err
+	}
+
+	if responseData.Status != "success" {
+		log.Warn().Msgf("Received API response from RED with status '%s' and error message: '%s'", responseData.Status, responseData.Error)
+		return nil, fmt.Errorf("API error: %s", responseData.Error)
 	}
 
 	return &responseData, nil
@@ -308,6 +292,8 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 func main() {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05", NoColor: false})
+
+	log.Info().Msgf("RedactedHook version %s, commit %s", version, commit[:7])
 
 	http.HandleFunc(Pathhook, hookData)
 
