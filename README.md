@@ -14,6 +14,11 @@ It was made with [autobrr](https://github.com/autobrr/autobrr) in mind.
 
 ## Getting Started
 
+### Warning
+
+Remember that autobrr also checks the RED API if you have min/max sizes set. This will result in you hitting the API 2x.
+So for your own good, don't set size checks in your autobrr filter is you use RedactedHook.
+
 ### Prerequisites
 
 To run RedactedHook, you'll need:
