@@ -32,6 +32,7 @@ type RequestData struct {
 	TorrentID   int     `json:"torrent_id,omitempty"`
 	APIKey      string  `json:"apikey"`
 	MinRatio    float64 `json:"minratio,omitempty"`
+	Size        int64   `json:"size,omitempty"`
 	Uploaders   string  `json:"uploaders,omitempty"`
 	RecordLabel string  `json:"record_labels,omitempty"`
 	Mode        string  `json:"mode,omitempty"`
@@ -50,6 +51,7 @@ type ResponseData struct {
 		} `json:"group"`
 		Torrent struct {
 			Username        string `json:"username"`
+			Size            int64  `json:"size"`
 			RecordLabel     string `json:"remasterRecordLabel"`
 			ReleaseName     string `json:"filePath"`
 			CatalogueNumber string `json:"remasterCatalogueNumber"`
@@ -281,6 +283,28 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		if !isRecordLabelPresent {
 			w.WriteHeader(http.StatusIMUsed + 2) // HTTP status code 228
 			log.Debug().Msgf("The record label '%s' is not included in the requested record labels: %v. Responding with status code 228.", recordLabel, requestedRecordLabels)
+			return
+		}
+	}
+
+	// hook size
+	if requestData.TorrentID != 0 && requestData.Size != 0 {
+		if torrentData == nil {
+			torrentData, err = fetchTorrentData(requestData.TorrentID, requestData.APIKey)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		torrentSize := torrentData.Response.Torrent.Size
+
+		log.Debug().Msgf("Requested size: %d", requestData.Size)
+		log.Debug().Msgf("Returned size: %d", torrentSize)
+
+		if torrentSize > requestData.Size {
+			w.WriteHeader(http.StatusIMUsed + 3) // HTTP status code 229
+			log.Debug().Msgf("Returned size %d is above requested size %d, responding with status 229", torrentSize, requestData.Size)
 			return
 		}
 	}
