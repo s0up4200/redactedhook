@@ -32,7 +32,8 @@ type RequestData struct {
 	TorrentID   int     `json:"torrent_id,omitempty"`
 	APIKey      string  `json:"apikey"`
 	MinRatio    float64 `json:"minratio,omitempty"`
-	Size        int64   `json:"size,omitempty"`
+	MinSize     int64   `json:"minsize,omitempty"`
+	MaxSize     int64   `json:"maxsize,omitempty"`
 	Uploaders   string  `json:"uploaders,omitempty"`
 	RecordLabel string  `json:"record_labels,omitempty"`
 	Mode        string  `json:"mode,omitempty"`
@@ -288,7 +289,7 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// hook size
-	if requestData.TorrentID != 0 && requestData.Size != 0 {
+	if requestData.TorrentID != 0 && (requestData.MinSize != 0 || requestData.MaxSize != 0) {
 		if torrentData == nil {
 			torrentData, err = fetchTorrentData(requestData.TorrentID, requestData.APIKey)
 			if err != nil {
@@ -299,12 +300,14 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 
 		torrentSize := torrentData.Response.Torrent.Size
 
-		log.Debug().Msgf("Requested size: %d", requestData.Size)
-		log.Debug().Msgf("Returned size: %d", torrentSize)
+		log.Debug().Msgf("Torrent size: %d", torrentSize)
+		log.Debug().Msgf("Requested min size: %d", requestData.MinSize)
+		log.Debug().Msgf("Requested max size: %d", requestData.MaxSize)
 
-		if torrentSize > requestData.Size {
+		if (requestData.MinSize != 0 && torrentSize < requestData.MinSize) ||
+			(requestData.MaxSize != 0 && torrentSize > requestData.MaxSize) {
 			w.WriteHeader(http.StatusIMUsed + 3) // HTTP status code 229
-			log.Debug().Msgf("Returned size %d is above requested size %d, responding with status 229", torrentSize, requestData.Size)
+			log.Debug().Msgf("Torrent size %d is outside the requested size range (%d to %d), responding with status 229", torrentSize, requestData.MinSize, requestData.MaxSize)
 			return
 		}
 	}
