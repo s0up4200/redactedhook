@@ -7,6 +7,7 @@ RedactedHook is a webhook companion service for [autobrr](https://github.com/aut
 - Verify if an uploader's name is on a provided whitelist or blacklist.
 - Check for record labels. Useful for grabbing torrents from a specific label.
 - Check if a user's ratio meets a specified minimum value (additional API hit if used with the other two).
+- Check the torrentSize (Useful for not hitting the API from both autobrr and redactedhook)
 - Easy to integrate with other applications via webhook.
 - Rate Limiter set to a maximum of 10 requests per 10 seconds to abide by RED rules.
 
@@ -91,7 +92,7 @@ To use RedactedHook, send POST requests to the following endpoint:
     Method: POST
     Expected HTTP Status: 200
 
-You can check the ratio, uploader, and record label in a single request or separately. Keep in mind that checking the ratio will result in an additional API hit on the RED API, as it's not part of the same endpoint as uploaders and record labels.
+You can check the ratio, uploader, size and record label in a single request or separately. Keep in mind that checking the ratio will result in an additional API hit on the RED API, as it's not part of the same endpoint as uploaders and record labels.
 
 **JSON Payload for everything:**
 
@@ -117,14 +118,15 @@ You can check the ratio, uploader, and record label in a single request or separ
 }
 ```
 
-**JSON Payload for uploader check:**
+**JSON Payload for uploader and size check:**
 
 ```json
 {
   "torrent_id": {{.TorrentID}},
   "apikey": "API_KEY",
   "uploaders": "USER1,USER2,USER3",
-  "mode": "blacklist/whitelist"
+  "mode": "blacklist/whitelist",
+  "maxsize": 340155737
 }
 ```
 
@@ -142,6 +144,10 @@ You can check the ratio, uploader, and record label in a single request or separ
 
 `api_key` is your Redacted API key. Needs user and torrents privileges.
 
+`minsize` is the minimum allowed size **measured in bytes** you want to grab.
+
+`maxsize` is the max allowed size **measured in bytes** you want to grab.
+
 `uploaders` is a comma-separated list of uploaders to check against.
 
 `mode` is either blacklist or whitelist. If blacklist is used, the torrent will be stopped if the uploader is found in the list. If whitelist is used, the torrent will be stopped if the uploader is not found in the list.
@@ -155,3 +161,8 @@ curl -X POST -H "Content-Type: application/json" -d '{"user_id": 3855, "apikey":
 ```
 ```bash
 curl -X POST -H "Content-Type: application/json" -d '{"torrent_id": 3931392, "apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "mode": "blacklist", "uploaders": "blacklisted_user1,blacklisted_user2,blacklisted_user3"}' http://127.0.0.1:42135/redacted/hook
+```
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"torrent_id": 3931392, "apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "maxsize": 340155737}' http://127.0.0.1:42135/redacted/hook
+```
