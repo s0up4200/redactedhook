@@ -20,8 +20,8 @@ const (
 	Pathhook                = "/hook"
 )
 
-var redactedLimiter = rate.NewLimiter(rate.Every(1*time.Second), 10) // 10 requests per 10 seconds for Redacted
-var orpheusLimiter = rate.NewLimiter(rate.Every(2*time.Second), 1)   // 5 requests per 10 seconds for Orpheus
+var redactedLimiter = rate.NewLimiter(rate.Every(1*time.Second), 1)
+var orpheusLimiter = rate.NewLimiter(rate.Every(2*time.Second), 1)
 
 //var (
 //	version = "dev"
