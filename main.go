@@ -21,7 +21,7 @@ const (
 )
 
 var redactedLimiter = rate.NewLimiter(rate.Every(1*time.Second), 1)
-var orpheusLimiter = rate.NewLimiter(rate.Every(2*time.Second), 1)
+var orpheusLimiter = rate.NewLimiter(rate.Every(10*time.Second), 5)
 
 //var (
 //	version = "dev"
