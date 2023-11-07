@@ -100,7 +100,8 @@ You can check the ratio, uploader, size and record label in a single request or 
 {
   "indexer": {{.Indexer}},
   "user_id": USER_ID,
-  "apikey": "API_KEY",
+  "red_apikey": "RED_API_KEY",
+  "ops_apikey": "OPS_API_KEY",
   "minratio": MINIMUM_RATIO,
   "torrent_id": {{.TorrentID}},
   "uploaders": "USER1,USER2,USER3",
@@ -115,7 +116,8 @@ You can check the ratio, uploader, size and record label in a single request or 
 {
   "indexer": {{.Indexer}},
   "user_id": USER_ID,
-  "apikey": "API_KEY",
+  "red_apikey": "RED_API_KEY",
+  "ops_apikey": "OPS_API_KEY",
   "minratio": MINIMUM_RATIO
 }
 ```
@@ -126,7 +128,8 @@ You can check the ratio, uploader, size and record label in a single request or 
 {
   "indexer": {{.Indexer}},
   "torrent_id": {{.TorrentID}},
-  "apikey": "API_KEY",
+  "red_apikey": "RED_API_KEY",
+  "ops_apikey": "OPS_API_KEY",
   "uploaders": "USER1,USER2,USER3",
   "mode": "blacklist/whitelist",
   "maxsize": 340155737
@@ -139,7 +142,8 @@ You can check the ratio, uploader, size and record label in a single request or 
 {
   "indexer": {{.Indexer}},
   "torrent_id": {{.TorrentID}},
-  "apikey": "API_KEY",
+  "red_apikey": "RED_API_KEY",
+  "ops_apikey": "OPS_API_KEY",
   "record_labels": "LABEL1,LABEL2,LABEL3"
 }
 ```
