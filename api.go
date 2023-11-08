@@ -23,6 +23,11 @@ const (
 	Pathhook                = "/hook"
 )
 
+var (
+	redactedLimiter = rate.NewLimiter(rate.Every(10*time.Second), 10)
+	orpheusLimiter  = rate.NewLimiter(rate.Every(10*time.Second), 5)
+)
+
 type RequestData struct {
 	REDUserID   int     `json:"red_user_id,omitempty"`
 	OPSUserID   int     `json:"ops_user_id,omitempty"`
@@ -66,9 +71,6 @@ type APIClient struct {
 	OrpheusLimiter  *rate.Limiter
 	Client          *http.Client
 }
-
-var redactedLimiter = rate.NewLimiter(rate.Every(10*time.Second), 10)
-var orpheusLimiter = rate.NewLimiter(rate.Every(10*time.Second), 5)
 
 func NewAPIClient() *APIClient {
 	return &APIClient{
