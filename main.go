@@ -196,9 +196,6 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 	var userData *ResponseData
 	var requestData RequestData
 
-	// Log request received
-	log.Info().Msgf("Received data request from %s - %s", r.RemoteAddr, requestData.TorrentName)
-
 	// Read JSON payload from the request body
 	body, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
@@ -213,6 +210,14 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	// Log request received
+	logMsg := fmt.Sprintf("Received data request from %s", r.RemoteAddr)
+	if requestData.TorrentName != "" {
+		logMsg += fmt.Sprintf(" - TorrentName: %s", requestData.TorrentName)
+	}
+	log.Info().Msg(logMsg)
+
 	// Determine the appropriate API base based on the requested hook path
 	var apiBase string
 	switch requestData.Indexer {
