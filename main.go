@@ -238,21 +238,24 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 	if requestData.MinRatio != 0 {
 		var userID int
 		var apiKey string
-		// Validate user IDs for redacted and ops
 		if requestData.Indexer == "redacted" {
 			if requestData.REDUserID == 0 {
+				log.Debug().Msg("red_user_id is missing but required when minratio is set for 'redacted'")
 				http.Error(w, "red_user_id is required for 'redacted' when minratio is set", http.StatusBadRequest)
 				return
 			}
 			userID = requestData.REDUserID
 			apiKey = requestData.REDKey
+			log.Debug().Msgf("MinRatio check for Redacted with user ID: %d", userID)
 		} else if requestData.Indexer == "ops" {
 			if requestData.OPSUserID == 0 {
+				log.Debug().Msg("ops_user_id is missing but required when minratio is set for 'ops'")
 				http.Error(w, "ops_user_id is required for 'ops' when minratio is set", http.StatusBadRequest)
 				return
 			}
 			userID = requestData.OPSUserID
 			apiKey = requestData.OPSKey
+			log.Debug().Msgf("MinRatio check for OPS with user ID: %d", userID)
 		}
 
 		if userID != 0 {
