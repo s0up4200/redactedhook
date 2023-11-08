@@ -213,16 +213,6 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	// Validation for user IDs
-	if requestData.Indexer == "redacted" && requestData.REDUserID == 0 {
-		http.Error(w, "red_user_id is required for indexer 'redacted'", http.StatusBadRequest)
-		return
-	} else if requestData.Indexer == "ops" && requestData.OPSUserID == 0 {
-		http.Error(w, "ops_user_id is required for indexer 'ops'", http.StatusBadRequest)
-		return
-	}
-
 	// Determine the appropriate API base based on the requested hook path
 	var apiBase string
 	switch requestData.Indexer {
@@ -248,10 +238,19 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 	if requestData.MinRatio != 0 {
 		var userID int
 		var apiKey string
+		// Validate user IDs for redacted and ops
 		if requestData.Indexer == "redacted" {
+			if requestData.REDUserID == 0 {
+				http.Error(w, "red_user_id is required for 'redacted' when minratio is set", http.StatusBadRequest)
+				return
+			}
 			userID = requestData.REDUserID
 			apiKey = requestData.REDKey
 		} else if requestData.Indexer == "ops" {
+			if requestData.OPSUserID == 0 {
+				http.Error(w, "ops_user_id is required for 'ops' when minratio is set", http.StatusBadRequest)
+				return
+			}
 			userID = requestData.OPSUserID
 			apiKey = requestData.OPSKey
 		}
