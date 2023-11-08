@@ -15,12 +15,13 @@ import (
 )
 
 const (
-	APIEndpointBase = "https://redacted.ch/ajax.php"
-	Pathhook        = "/redacted/hook"
+	APIEndpointBaseRedacted = "https://redacted.ch/ajax.php"
+	APIEndpointBaseOrpheus  = "https://orpheus.network/ajax.php"
+	Pathhook                = "/hook"
 )
 
-// Rate limit requests to max 10 requests per 10 seconds
-var limiter = rate.NewLimiter(rate.Every(1*time.Second), 10)
+var redactedLimiter = rate.NewLimiter(rate.Every(10*time.Second), 10)
+var orpheusLimiter = rate.NewLimiter(rate.Every(10*time.Second), 5)
 
 //var (
 //	version = "dev"
@@ -28,15 +29,19 @@ var limiter = rate.NewLimiter(rate.Every(1*time.Second), 10)
 //)
 
 type RequestData struct {
-	UserID      int     `json:"user_id,omitempty"`
+	REDUserID   int     `json:"red_user_id,omitempty"`
+	OPSUserID   int     `json:"ops_user_id,omitempty"`
 	TorrentID   int     `json:"torrent_id,omitempty"`
-	APIKey      string  `json:"apikey"`
+	REDKey      string  `json:"red_apikey,omitempty"`
+	OPSKey      string  `json:"ops_apikey,omitempty"`
 	MinRatio    float64 `json:"minratio,omitempty"`
 	MinSize     int64   `json:"minsize,omitempty"`
 	MaxSize     int64   `json:"maxsize,omitempty"`
 	Uploaders   string  `json:"uploaders,omitempty"`
 	RecordLabel string  `json:"record_labels,omitempty"`
 	Mode        string  `json:"mode,omitempty"`
+	Indexer     string  `json:"indexer"`
+	TorrentName string  `json:"torrentname,omitempty"`
 }
 
 type ResponseData struct {
@@ -60,14 +65,27 @@ type ResponseData struct {
 	} `json:"response"`
 }
 
-func fetchTorrentData(torrentID int, apiKey string) (*ResponseData, error) {
+func fetchTorrentData(torrentID int, apiKey string, apiBase string, indexer string) (*ResponseData, error) {
 
+	// Determine the correct limiter based on the indexer
+	var limiter *rate.Limiter
+	switch indexer {
+	case "redacted":
+		limiter = redactedLimiter
+	case "ops":
+		limiter = orpheusLimiter
+	default:
+		// Return an error instead of using http.Error
+		return nil, fmt.Errorf("invalid indexer")
+	}
+
+	// Use the limiter
 	if !limiter.Allow() {
-		log.Warn().Msg("Too many requests (fetchTorrentData)")
+		log.Warn().Msgf(("%s: Too many requests (fetchTorrentData)"), indexer)
 		return nil, fmt.Errorf("too many requests")
 	}
 
-	endpoint := fmt.Sprintf("%s?action=torrent&id=%d", APIEndpointBase, torrentID)
+	endpoint := fmt.Sprintf("%s?action=torrent&id=%d", apiBase, torrentID)
 	req, err := http.NewRequest("GET", endpoint, nil)
 	req.Header.Set("Authorization", apiKey)
 
@@ -96,21 +114,38 @@ func fetchTorrentData(torrentID int, apiKey string) (*ResponseData, error) {
 	}
 
 	if responseData.Status != "success" {
-		log.Warn().Msgf("Received API response from RED with status '%s' and error message: '%s'", responseData.Status, responseData.Error)
-		return nil, fmt.Errorf("API error: %s", responseData.Error)
+		var sourceName string
+		if indexer == "redacted" {
+			sourceName = "RED"
+		} else if indexer == "ops" {
+			sourceName = "OPS"
+		}
+		log.Warn().Msgf("Received API response from %s with status '%s' and error message: '%s'", sourceName, responseData.Status, responseData.Error)
+		return nil, fmt.Errorf("API error from %s: %s", sourceName, responseData.Error)
 	}
 
 	return &responseData, nil
 }
 
-func fetchUserData(userID int, apiKey string) (*ResponseData, error) {
+func fetchUserData(userID int, apiKey string, indexer string, apiBase string) (*ResponseData, error) {
+	// Determine the correct limiter based on the indexer
+	var limiter *rate.Limiter
+	switch indexer {
+	case "redacted":
+		limiter = redactedLimiter
+	case "ops":
+		limiter = orpheusLimiter
+	default:
+		return nil, fmt.Errorf("invalid indexer")
+	}
 
+	// Use the limiter
 	if !limiter.Allow() {
-		log.Warn().Msg("Too many requests (fetchUserData)")
+		log.Warn().Msgf("%s: Too many requests (fetchUserData)", indexer)
 		return nil, fmt.Errorf("too many requests")
 	}
 
-	endpoint := fmt.Sprintf("%s?action=user&id=%d", APIEndpointBase, userID)
+	endpoint := fmt.Sprintf("%s?action=user&id=%d", apiBase, userID)
 	req, err := http.NewRequest("GET", endpoint, nil)
 	req.Header.Set("Authorization", apiKey)
 
@@ -139,8 +174,14 @@ func fetchUserData(userID int, apiKey string) (*ResponseData, error) {
 	}
 
 	if responseData.Status != "success" {
-		log.Warn().Msgf("Received API response from RED with status '%s' and error message: '%s'", responseData.Status, responseData.Error)
-		return nil, fmt.Errorf("API error: %s", responseData.Error)
+		var sourceName string
+		if indexer == "redacted" {
+			sourceName = "RED"
+		} else if indexer == "ops" {
+			sourceName = "OPS"
+		}
+		log.Warn().Msgf("Received API response from %s with status '%s' and error message: '%s'", sourceName, responseData.Status, responseData.Error)
+		return nil, fmt.Errorf("API error from %s: %s", sourceName, responseData.Error)
 	}
 
 	return &responseData, nil
@@ -151,12 +192,9 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Only POST method is supported", http.StatusBadRequest)
 		return
 	}
-
 	var torrentData *ResponseData
 	var userData *ResponseData
-
-	// Log request received
-	log.Info().Msgf("Received data request from %s", r.RemoteAddr)
+	var requestData RequestData
 
 	// Read JSON payload from the request body
 	body, err := io.ReadAll(r.Body)
@@ -166,7 +204,6 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var requestData RequestData
 	err = json.Unmarshal(body, &requestData)
 	if err != nil {
 		log.Debug().Msgf("Failed to unmarshal JSON payload: %s", err.Error())
@@ -174,37 +211,91 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Log request received
+	logMsg := fmt.Sprintf("Received data request from %s", r.RemoteAddr)
+	if requestData.TorrentName != "" {
+		logMsg += fmt.Sprintf(" - TorrentName: %s", requestData.TorrentName)
+	}
+	log.Info().Msg(logMsg)
+
+	// Determine the appropriate API base based on the requested hook path
+	var apiBase string
+	switch requestData.Indexer {
+	case "redacted":
+		apiBase = APIEndpointBaseRedacted
+	case "ops":
+		apiBase = APIEndpointBaseOrpheus
+	default:
+		http.Error(w, "Invalid path", http.StatusNotFound)
+		return
+	}
+
 	reqHeader := make(http.Header)
-	reqHeader.Set("Authorization", requestData.APIKey)
+	var apiKey string
+	if requestData.Indexer == "redacted" {
+		apiKey = requestData.REDKey
+	} else if requestData.Indexer == "ops" {
+		apiKey = requestData.OPSKey
+	}
+	reqHeader.Set("Authorization", apiKey)
 
 	// hook ratio
-	if requestData.UserID != 0 && requestData.MinRatio != 0 {
-
-		if userData == nil {
-			userData, err = fetchUserData(requestData.UserID, requestData.APIKey)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+	if requestData.MinRatio != 0 {
+		var userID int
+		var apiKey string
+		if requestData.Indexer == "redacted" {
+			if requestData.REDUserID == 0 {
+				log.Debug().Msg("red_user_id is missing but required when minratio is set for 'redacted'")
+				http.Error(w, "red_user_id is required for 'redacted' when minratio is set", http.StatusBadRequest)
 				return
 			}
+			userID = requestData.REDUserID
+			apiKey = requestData.REDKey
+			log.Debug().Msgf("MinRatio check for Redacted with user ID: %d", userID)
+		} else if requestData.Indexer == "ops" {
+			if requestData.OPSUserID == 0 {
+				log.Debug().Msg("ops_user_id is missing but required when minratio is set for 'ops'")
+				http.Error(w, "ops_user_id is required for 'ops' when minratio is set", http.StatusBadRequest)
+				return
+			}
+			userID = requestData.OPSUserID
+			apiKey = requestData.OPSKey
+			log.Debug().Msgf("MinRatio check for OPS with user ID: %d", userID)
 		}
 
-		ratio := userData.Response.Stats.Ratio
-		minRatio := requestData.MinRatio
-		username := userData.Response.Username
+		if userID != 0 {
+			if userData == nil {
+				userData, err = fetchUserData(userID, apiKey, requestData.Indexer, apiBase)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
 
-		log.Debug().Msgf("MinRatio set to %.2f for %s", minRatio, username)
+			ratio := userData.Response.Stats.Ratio
+			minRatio := requestData.MinRatio
+			username := userData.Response.Username
 
-		if ratio < minRatio {
-			w.WriteHeader(http.StatusIMUsed) // HTTP status code 226
-			log.Debug().Msgf("Returned ratio %.2f is below minratio %.2f for %s, responding with status 226", ratio, minRatio, username)
-			return
+			log.Debug().Msgf("MinRatio set to %.2f for %s", minRatio, username)
+
+			if ratio < minRatio {
+				w.WriteHeader(http.StatusIMUsed) // HTTP status code 226
+				log.Debug().Msgf("Returned ratio %.2f is below minratio %.2f for %s, responding with status 226", ratio, minRatio, username)
+				return
+			}
 		}
 	}
 
 	// hook uploader
 	if requestData.TorrentID != 0 && requestData.Uploaders != "" {
 		if torrentData == nil {
-			torrentData, err = fetchTorrentData(requestData.TorrentID, requestData.APIKey)
+			var apiKey string
+			if requestData.Indexer == "redacted" {
+				apiKey = requestData.REDKey
+			} else if requestData.Indexer == "ops" {
+				apiKey = requestData.OPSKey
+			}
+			torrentData, err = fetchTorrentData(requestData.TorrentID, apiKey, apiBase, requestData.Indexer)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -237,7 +328,13 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 	// hook record label
 	if requestData.TorrentID != 0 && requestData.RecordLabel != "" {
 		if torrentData == nil {
-			torrentData, err = fetchTorrentData(requestData.TorrentID, requestData.APIKey)
+			var apiKey string
+			if requestData.Indexer == "redacted" {
+				apiKey = requestData.REDKey
+			} else if requestData.Indexer == "ops" {
+				apiKey = requestData.OPSKey
+			}
+			torrentData, err = fetchTorrentData(requestData.TorrentID, apiKey, apiBase, requestData.Indexer)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -291,7 +388,13 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 	// hook size
 	if requestData.TorrentID != 0 && (requestData.MinSize != 0 || requestData.MaxSize != 0) {
 		if torrentData == nil {
-			torrentData, err = fetchTorrentData(requestData.TorrentID, requestData.APIKey)
+			var apiKey string
+			if requestData.Indexer == "redacted" {
+				apiKey = requestData.REDKey
+			} else if requestData.Indexer == "ops" {
+				apiKey = requestData.OPSKey
+			}
+			torrentData, err = fetchTorrentData(requestData.TorrentID, apiKey, apiBase, requestData.Indexer)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
