@@ -91,11 +91,11 @@ func (api *APIClient) fetchAPIData(action string, id int, apiKey string, indexer
 	switch indexer {
 	case "redacted":
 		limiter = api.RedactedLimiter
-		apiBase = "https://redacted.ch/api"
+		apiBase = APIEndpointBaseRedacted
 		sourceName = "RED"
 	case "ops":
 		limiter = api.OrpheusLimiter
-		apiBase = "https://orpheus.network/api"
+		apiBase = APIEndpointBaseOrpheus
 		sourceName = "OPS"
 	default:
 		return nil, fmt.Errorf("invalid indexer")
