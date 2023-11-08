@@ -29,7 +29,8 @@ var orpheusLimiter = rate.NewLimiter(rate.Every(10*time.Second), 5)
 //)
 
 type RequestData struct {
-	UserID      int     `json:"user_id,omitempty"`
+	REDUserID   int     `json:"red_user_id,omitempty"`
+	OPSUserID   int     `json:"ops_user_id,omitempty"`
 	TorrentID   int     `json:"torrent_id,omitempty"`
 	REDKey      string  `json:"red_apikey,omitempty"`
 	OPSKey      string  `json:"ops_apikey,omitempty"`
@@ -126,7 +127,6 @@ func fetchTorrentData(torrentID int, apiKey string, apiBase string, indexer stri
 }
 
 func fetchUserData(userID int, apiKey string, indexer string, apiBase string) (*ResponseData, error) {
-
 	// Determine the correct limiter based on the indexer
 	var limiter *rate.Limiter
 	switch indexer {
@@ -135,13 +135,12 @@ func fetchUserData(userID int, apiKey string, indexer string, apiBase string) (*
 	case "ops":
 		limiter = orpheusLimiter
 	default:
-		// Return an error instead of using http.Error
 		return nil, fmt.Errorf("invalid indexer")
 	}
 
 	// Use the limiter
 	if !limiter.Allow() {
-		log.Warn().Msgf(("%s: Too many requests (fetchUserData)"), indexer)
+		log.Warn().Msgf("%s: Too many requests (fetchUserData)", indexer)
 		return nil, fmt.Errorf("too many requests")
 	}
 
@@ -214,6 +213,15 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validation for user IDs
+	if requestData.Indexer == "redacted" && requestData.REDUserID == 0 {
+		http.Error(w, "red_user_id is required for indexer 'redacted'", http.StatusBadRequest)
+		return
+	} else if requestData.Indexer == "ops" && requestData.OPSUserID == 0 {
+		http.Error(w, "ops_user_id is required for indexer 'ops'", http.StatusBadRequest)
+		return
+	}
+
 	// Determine the appropriate API base based on the requested hook path
 	var apiBase string
 	switch requestData.Indexer {
@@ -236,32 +244,37 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 	reqHeader.Set("Authorization", apiKey)
 
 	// hook ratio
-	if requestData.UserID != 0 && requestData.MinRatio != 0 {
-
-		if userData == nil {
-			var apiKey string
-			if requestData.Indexer == "redacted" {
-				apiKey = requestData.REDKey
-			} else if requestData.Indexer == "ops" {
-				apiKey = requestData.OPSKey
-			}
-			userData, err = fetchUserData(requestData.UserID, apiKey, apiBase, requestData.Indexer)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+	if requestData.MinRatio != 0 {
+		var userID int
+		var apiKey string
+		if requestData.Indexer == "redacted" {
+			userID = requestData.REDUserID
+			apiKey = requestData.REDKey
+		} else if requestData.Indexer == "ops" {
+			userID = requestData.OPSUserID
+			apiKey = requestData.OPSKey
 		}
 
-		ratio := userData.Response.Stats.Ratio
-		minRatio := requestData.MinRatio
-		username := userData.Response.Username
+		if userID != 0 {
+			if userData == nil {
+				userData, err = fetchUserData(userID, apiKey, requestData.Indexer, apiBase)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
 
-		log.Debug().Msgf("MinRatio set to %.2f for %s", minRatio, username)
+			ratio := userData.Response.Stats.Ratio
+			minRatio := requestData.MinRatio
+			username := userData.Response.Username
 
-		if ratio < minRatio {
-			w.WriteHeader(http.StatusIMUsed) // HTTP status code 226
-			log.Debug().Msgf("Returned ratio %.2f is below minratio %.2f for %s, responding with status 226", ratio, minRatio, username)
-			return
+			log.Debug().Msgf("MinRatio set to %.2f for %s", minRatio, username)
+
+			if ratio < minRatio {
+				w.WriteHeader(http.StatusIMUsed) // HTTP status code 226
+				log.Debug().Msgf("Returned ratio %.2f is below minratio %.2f for %s, responding with status 226", ratio, minRatio, username)
+				return
+			}
 		}
 	}
 

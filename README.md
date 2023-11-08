@@ -151,7 +151,9 @@ You can check the ratio, uploader, size and record label in a single request or 
 
 `torrent_id` is the TorrentID of the pushed release within autobrr.
 
-`user_id` is the number in the URL when you visit your profile.
+`red_user_id` is the number in the URL when you visit your profile.
+
+`ops_user_id` is the number in the URL when you visit your profile.
 
 `red_apikey` is your Redacted API key. Needs user and torrents privileges.
 
