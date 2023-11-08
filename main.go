@@ -200,7 +200,6 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 	// Read JSON payload from the request body
 	body, err := io.ReadAll(r.Body)
 	defer r.Body.Close()
-	log.Debug().Msgf("Incoming request body: %s", string(body))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
