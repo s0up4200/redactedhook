@@ -20,7 +20,7 @@ const (
 	Pathhook                = "/hook"
 )
 
-var redactedLimiter = rate.NewLimiter(rate.Every(1*time.Second), 1)
+var redactedLimiter = rate.NewLimiter(rate.Every(1*time.Second), 10)
 var orpheusLimiter = rate.NewLimiter(rate.Every(10*time.Second), 5)
 
 //var (
@@ -41,6 +41,7 @@ type RequestData struct {
 	RecordLabel string  `json:"record_labels,omitempty"`
 	Mode        string  `json:"mode,omitempty"`
 	Indexer     string  `json:"indexer"`
+	TorrentName string  `json:"torrentname,omitempty"`
 }
 
 type ResponseData struct {
@@ -193,9 +194,10 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 	}
 	var torrentData *ResponseData
 	var userData *ResponseData
+	var requestData RequestData
 
 	// Log request received
-	log.Info().Msgf("Received data request from %s", r.RemoteAddr)
+	log.Info().Msgf("Received data request from %s - %s", r.RemoteAddr, requestData.TorrentName)
 
 	// Read JSON payload from the request body
 	body, err := io.ReadAll(r.Body)
@@ -205,7 +207,6 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var requestData RequestData
 	err = json.Unmarshal(body, &requestData)
 	if err != nil {
 		log.Debug().Msgf("Failed to unmarshal JSON payload: %s", err.Error())
