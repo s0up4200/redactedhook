@@ -21,7 +21,7 @@ COPY . ./
 #ENV GOOS=linux
 #ENV CGO_ENABLED=0
 
-RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o bin/redactedhook ./main.go
+RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o bin/redactedhook .
 
 # build runner
 FROM alpine:latest
@@ -29,8 +29,8 @@ FROM alpine:latest
 LABEL org.opencontainers.image.source = "https://github.com/s0up4200/redactedhook"
 
 ENV HOME="/config" \
-XDG_CONFIG_HOME="/config" \
-XDG_DATA_HOME="/config"
+    XDG_CONFIG_HOME="/config" \
+    XDG_DATA_HOME="/config"
 
 RUN apk --no-cache add ca-certificates curl tzdata jq
 
