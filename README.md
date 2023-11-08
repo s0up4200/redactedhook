@@ -92,14 +92,15 @@ To use RedactedHook, send POST requests to the following endpoint:
     Method: POST
     Expected HTTP Status: 200
 
-You can check the ratio, uploader, size and record label in a single request or separately.
+You can check ratio, uploader, size and, record label in a single request or separately.
 
 **JSON Payload for everything:**
 
 ```json
 {
   "indexer": "{{ .Indexer | js }}",
-  "user_id": USER_ID,
+  "red_user_id": USER_ID,
+  "ops_user_id": USER_ID,
   "red_apikey": "RED_API_KEY",
   "ops_apikey": "OPS_API_KEY",
   "minratio": MINIMUM_RATIO,
@@ -115,7 +116,8 @@ You can check the ratio, uploader, size and record label in a single request or 
 ```json
 {
   "indexer": "{{ .Indexer | js }}",
-  "user_id": USER_ID,
+  "red_user_id": USER_ID,
+  "ops_user_id": USER_ID,
   "red_apikey": "RED_API_KEY",
   "ops_apikey": "OPS_API_KEY",
   "minratio": MINIMUM_RATIO
@@ -147,9 +149,11 @@ You can check the ratio, uploader, size and record label in a single request or 
   "record_labels": "LABEL1,LABEL2,LABEL3"
 }
 ```
-`indexer` is the indexer that pushed the release within autobrr.
+`indexer` - `"{{ .Indexer | js }}"` this is the indexer that pushed the release within autobrr.
 
-`torrent_id` is the TorrentID of the pushed release within autobrr.
+`torrent_id` - `{{.TorrentID}}` this is the TorrentID of the pushed release within autobrr.
+
+`torrentname` **(optional)** - `"{{ .TorrentName | js }}"` - For logging purposes only.
 
 `red_user_id` is the number in the URL when you visit your profile.
 
@@ -159,6 +163,8 @@ You can check the ratio, uploader, size and record label in a single request or 
 
 `ops_apikey` is your Orpheus API key. Needs user and torrents privileges.
 
+`record_labels` is a comma-separated list of record labels to check against.
+
 `minsize` is the minimum allowed size **measured in bytes** you want to grab.
 
 `maxsize` is the max allowed size **measured in bytes** you want to grab.
@@ -167,12 +173,10 @@ You can check the ratio, uploader, size and record label in a single request or 
 
 `mode` is either blacklist or whitelist. If blacklist is used, the torrent will be stopped if the uploader is found in the list. If whitelist is used, the torrent will be stopped if the uploader is not found in the list.
 
-`record_labels` is a comma-separated list of record labels to check against.
-
 #### curl commands for easy testing
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{"indexer": "redacted", "user_id": 3855, "red_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "ops_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "minratio": 1.0}' http://127.0.0.1:42135/hook
+curl -X POST -H "Content-Type: application/json" -d '{"indexer": "redacted", "red_user_id": 3855, "red_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "ops_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "minratio": 1.0}' http://127.0.0.1:42135/hook
 ```
 ```bash
 curl -X POST -H "Content-Type: application/json" -d '{"indexer": "redacted", "torrent_id": 3931392, "red_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "ops_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "mode": "blacklist", "uploaders": "blacklisted_user1,blacklisted_user2,blacklisted_user3"}' http://127.0.0.1:42135/hook
