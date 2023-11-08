@@ -98,7 +98,7 @@ You can check the ratio, uploader, size and record label in a single request or 
 
 ```json
 {
-  "indexer": {{.Indexer}},
+  "indexer": "{{ .Indexer | js }}",
   "user_id": USER_ID,
   "red_apikey": "RED_API_KEY",
   "ops_apikey": "OPS_API_KEY",
@@ -114,7 +114,7 @@ You can check the ratio, uploader, size and record label in a single request or 
 
 ```json
 {
-  "indexer": {{.Indexer}},
+  "indexer": "{{ .Indexer | js }}",
   "user_id": USER_ID,
   "red_apikey": "RED_API_KEY",
   "ops_apikey": "OPS_API_KEY",
@@ -126,7 +126,7 @@ You can check the ratio, uploader, size and record label in a single request or 
 
 ```json
 {
-  "indexer": {{.Indexer}},
+  "indexer": "{{ .Indexer | js }}",
   "torrent_id": {{.TorrentID}},
   "red_apikey": "RED_API_KEY",
   "ops_apikey": "OPS_API_KEY",
@@ -140,7 +140,7 @@ You can check the ratio, uploader, size and record label in a single request or 
 
 ```json
 {
-  "indexer": {{.Indexer}},
+  "indexer": "{{ .Indexer | js }}",
   "torrent_id": {{.TorrentID}},
   "red_apikey": "RED_API_KEY",
   "ops_apikey": "OPS_API_KEY",
