@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/inhies/go-bytesize"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/time/rate"
 )
@@ -29,26 +30,25 @@ var (
 )
 
 type RequestData struct {
-	REDUserID   int     `json:"red_user_id,omitempty"`
-	OPSUserID   int     `json:"ops_user_id,omitempty"`
-	TorrentID   int     `json:"torrent_id,omitempty"`
-	REDKey      string  `json:"red_apikey,omitempty"`
-	OPSKey      string  `json:"ops_apikey,omitempty"`
-	MinRatio    float64 `json:"minratio,omitempty"`
-	MinSize     int64   `json:"minsize,omitempty"`
-	MaxSize     int64   `json:"maxsize,omitempty"`
-	Uploaders   string  `json:"uploaders,omitempty"`
-	RecordLabel string  `json:"record_labels,omitempty"`
-	Mode        string  `json:"mode,omitempty"`
-	Indexer     string  `json:"indexer"`
-	TorrentName string  `json:"torrentname,omitempty"`
+	REDUserID   int               `json:"red_user_id,omitempty"`
+	OPSUserID   int               `json:"ops_user_id,omitempty"`
+	TorrentID   int               `json:"torrent_id,omitempty"`
+	REDKey      string            `json:"red_apikey,omitempty"`
+	OPSKey      string            `json:"ops_apikey,omitempty"`
+	MinRatio    float64           `json:"minratio,omitempty"`
+	MinSize     bytesize.ByteSize `json:"minsize,omitempty"`
+	MaxSize     bytesize.ByteSize `json:"maxsize,omitempty"`
+	Uploaders   string            `json:"uploaders,omitempty"`
+	RecordLabel string            `json:"record_labels,omitempty"`
+	Mode        string            `json:"mode,omitempty"`
+	Indexer     string            `json:"indexer"`
+	TorrentName string            `json:"torrentname,omitempty"`
 }
 
 type ResponseData struct {
-	Status         string `json:"status"`
-	Error          string `json:"error"`
-	TorrentFetched bool   // Add this field to track if Torrent data has been fetched
-	Response       struct {
+	Status   string `json:"status"`
+	Error    string `json:"error"`
+	Response struct {
 		Username string `json:"username"`
 		Stats    struct {
 			Ratio float64 `json:"ratio"`
@@ -196,6 +196,34 @@ func (api *APIClient) hookData(w http.ResponseWriter, r *http.Request, config *C
 		requestData.OPSUserID = config.UserID.OPSUserID
 	}
 
+	if requestData.TorrentID != 0 {
+		var action string = "torrent"
+		if data == nil || data.Response.Torrent == nil {
+			data, err = api.fetchAPIData(action, requestData.TorrentID, apiKey, requestData.Indexer)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		recordLabel := data.Response.Torrent.RecordLabel
+		catalogueNumber := data.Response.Torrent.CatalogueNumber
+		name := data.Response.Group.Name
+
+		var labelAndCatalogue string
+
+		if recordLabel == "" && catalogueNumber == "" {
+			labelAndCatalogue = ""
+		} else if recordLabel == "" {
+			labelAndCatalogue = fmt.Sprintf(" (Cat#: %s)", catalogueNumber)
+		} else if catalogueNumber == "" {
+			labelAndCatalogue = fmt.Sprintf(" (Label: %s)", recordLabel)
+		} else {
+			labelAndCatalogue = fmt.Sprintf(" (Label: %s - Cat#: %s)", recordLabel, catalogueNumber)
+		}
+
+		log.Debug().Msgf("Checking release: %s%s (TorrentID: %d)", name, labelAndCatalogue, requestData.TorrentID)
+	}
+
 	// hook ratio
 	if requestData.MinRatio != 0 {
 		var userID int
@@ -273,24 +301,8 @@ func (api *APIClient) hookData(w http.ResponseWriter, r *http.Request, config *C
 		}
 
 		recordLabel := data.Response.Torrent.RecordLabel
-		catalogueNumber := data.Response.Torrent.CatalogueNumber
 		name := data.Response.Group.Name
-		TorrentID := requestData.TorrentID
 		requestedRecordLabels := strings.Split(requestData.RecordLabel, ",")
-
-		var labelAndCatalogue string
-
-		if recordLabel == "" && catalogueNumber == "" {
-			labelAndCatalogue = ""
-		} else if recordLabel == "" {
-			labelAndCatalogue = fmt.Sprintf(" (Cat#: %s)", catalogueNumber)
-		} else if catalogueNumber == "" {
-			labelAndCatalogue = fmt.Sprintf(" (Label: %s)", recordLabel)
-		} else {
-			labelAndCatalogue = fmt.Sprintf(" (Label: %s - Cat#: %s)", recordLabel, catalogueNumber)
-		}
-
-		log.Debug().Msgf("Checking release: %s%s (TorrentID: %d)", name, labelAndCatalogue, TorrentID)
 
 		if recordLabel == "" {
 			log.Debug().Msgf("No record label found for release: %s. Responding with status code 228.", name)
@@ -315,6 +327,13 @@ func (api *APIClient) hookData(w http.ResponseWriter, r *http.Request, config *C
 
 	// hook size
 	if requestData.TorrentID != 0 && (requestData.MinSize != 0 || requestData.MaxSize != 0) {
+		// Check if MinSize is greater than MaxSize
+		if requestData.MinSize != 0 && requestData.MaxSize != 0 && requestData.MinSize > requestData.MaxSize {
+			errMessage := fmt.Sprintf("Invalid size range: MinSize %s is greater than MaxSize %s", requestData.MinSize.String(), requestData.MaxSize.String())
+			http.Error(w, errMessage, http.StatusBadRequest) // HTTP status code 400
+			log.Debug().Msg(errMessage)
+			return
+		}
 		var action string = "torrent"
 		if data == nil || data.Response.Torrent == nil {
 			data, err = api.fetchAPIData(action, requestData.TorrentID, apiKey, requestData.Indexer)
@@ -324,18 +343,23 @@ func (api *APIClient) hookData(w http.ResponseWriter, r *http.Request, config *C
 			}
 		}
 
-		torrentSize := data.Response.Torrent.Size
+		torrentSize := bytesize.ByteSize(data.Response.Torrent.Size)
 
-		log.Debug().Msgf("Torrent size: %d", torrentSize)
-		log.Debug().Msgf("Requested min size: %d", requestData.MinSize)
-		log.Debug().Msgf("Requested max size: %d", requestData.MaxSize)
-
+		// Compare sizes
 		if (requestData.MinSize != 0 && torrentSize < requestData.MinSize) ||
 			(requestData.MaxSize != 0 && torrentSize > requestData.MaxSize) {
 			w.WriteHeader(http.StatusIMUsed + 3) // HTTP status code 229
-			log.Debug().Msgf("Torrent size %d is outside the requested size range (%d to %d), responding with status 229", torrentSize, requestData.MinSize, requestData.MaxSize)
+			log.Debug().Msgf("Torrent size: %s", torrentSize.String())
+			if requestData.MinSize != 0 {
+				log.Debug().Msgf("Requested min size: %s", requestData.MinSize.String())
+			}
+			if requestData.MaxSize != 0 {
+				log.Debug().Msgf("Requested max size: %s", requestData.MaxSize.String())
+			}
+			log.Debug().Msgf("Torrent size %s is outside the requested size range, responding with status 229", torrentSize.String())
 			return
 		}
+
 	}
 	w.WriteHeader(http.StatusOK) // HTTP status code 200
 	log.Debug().Msg("Conditions met, responding with status 200")
