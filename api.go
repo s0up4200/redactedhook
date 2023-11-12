@@ -70,38 +70,23 @@ type APIClient struct {
 	RedactedLimiter *rate.Limiter
 	OrpheusLimiter  *rate.Limiter
 	Client          *http.Client
+	Config          *Config
 }
 
-func NewAPIClient() *APIClient {
+func NewAPIClient(config *Config) *APIClient {
 	return &APIClient{
 		RedactedLimiter: redactedLimiter,
 		OrpheusLimiter:  orpheusLimiter,
 		Client: &http.Client{
 			Timeout: time.Second * 10,
 		},
+		Config: config,
 	}
 }
 
 func (api *APIClient) fetchAPIData(action string, id int, apiKey string, indexer string) (*ResponseData, error) {
-	var apiBase string
-	var limiter *rate.Limiter
-	var sourceName string
+	limiter, apiBase, sourceName := api.getLimiterAndBase(indexer)
 
-	// Determine the correct limiter and source name based on the indexer
-	switch indexer {
-	case "redacted":
-		limiter = api.RedactedLimiter
-		apiBase = APIEndpointBaseRedacted
-		sourceName = "RED"
-	case "ops":
-		limiter = api.OrpheusLimiter
-		apiBase = APIEndpointBaseOrpheus
-		sourceName = "OPS"
-	default:
-		return nil, fmt.Errorf("invalid indexer")
-	}
-
-	// Use the limiter
 	if !limiter.Allow() {
 		log.Warn().Msgf("%s: Too many requests (%s)", indexer, action)
 		return nil, fmt.Errorf("too many requests")
@@ -133,13 +118,24 @@ func (api *APIClient) fetchAPIData(action string, id int, apiKey string, indexer
 
 	if responseData.Status != "success" {
 		log.Warn().Msgf("Received API response from %s with status '%s' and error message: '%s'", sourceName, responseData.Status, responseData.Error)
-		return nil, fmt.Errorf("API error from %s: %s", sourceName, responseData.Error)
+		return nil, fmt.Errorf(responseData.Error)
 	}
 
 	return &responseData, nil
 }
 
-func (api *APIClient) hookData(w http.ResponseWriter, r *http.Request) {
+func (api *APIClient) getLimiterAndBase(indexer string) (*rate.Limiter, string, string) {
+	switch indexer {
+	case "redacted":
+		return api.RedactedLimiter, APIEndpointBaseRedacted, "RED"
+	case "ops":
+		return api.OrpheusLimiter, APIEndpointBaseOrpheus, "OPS"
+	default:
+		return nil, "", ""
+	}
+}
+
+func (api *APIClient) hookData(w http.ResponseWriter, r *http.Request, config *Config) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is supported", http.StatusBadRequest)
 		return
@@ -158,7 +154,7 @@ func (api *APIClient) hookData(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(body, &requestData)
 	if err != nil {
-		log.Debug().Msgf("Failed to unmarshal JSON payload: %s", err.Error())
+		log.Debug().Err(err).Msg("Failed to unmarshal JSON payload")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -179,6 +175,27 @@ func (api *APIClient) hookData(w http.ResponseWriter, r *http.Request) {
 	}
 	reqHeader.Set("Authorization", apiKey)
 
+	// Fallback to config values if not present in the webhook
+	if apiKey == "" {
+		if requestData.Indexer == "redacted" {
+			apiKey = config.APIKeys.REDKey
+		} else if requestData.Indexer == "ops" {
+			apiKey = config.APIKeys.OPSKey
+		}
+	}
+
+	if requestData.MinRatio == 0 {
+		requestData.MinRatio = config.MinRatio
+	}
+
+	if requestData.REDUserID == 0 {
+		requestData.REDUserID = config.UserID.REDUserID
+	}
+
+	if requestData.OPSUserID == 0 {
+		requestData.OPSUserID = config.UserID.OPSUserID
+	}
+
 	// hook ratio
 	if requestData.MinRatio != 0 {
 		var userID int
@@ -195,7 +212,7 @@ func (api *APIClient) hookData(w http.ResponseWriter, r *http.Request) {
 		if userID != 0 {
 			data, err = api.fetchAPIData(action, userID, apiKey, requestData.Indexer)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, fmt.Sprintf("Internal Server Error: %s", err.Error()), http.StatusInternalServerError)
 				return
 			}
 
