@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf
+	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/rs/zerolog v1.29.0
 	github.com/spf13/viper v1.17.0
 	golang.org/x/time v0.3.0
@@ -30,5 +31,6 @@ require (
 	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

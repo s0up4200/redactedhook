@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/inhies/go-bytesize"
+	"github.com/natefinch/lumberjack"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -494,6 +495,14 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 func main() {
 	// Setup the default logger to use the console writer and a time format.
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05", NoColor: false})
+
+	log.Logger = log.Output(&lumberjack.Logger{
+		Filename:   "./logs/redactedhook.log", // log file path
+		MaxSize:    50,                        // Max file size in MB
+		MaxBackups: 3,                         // Max number of old log files to keep
+		MaxAge:     28,                        // Max age in days to keep a log file
+		Compress:   false,                     // Whether to compress old log files
+	})
 
 	var configPath string
 	flag.StringVar(&configPath, "config", "", "Path to the configuration file")
