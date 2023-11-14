@@ -1,0 +1,13 @@
+[apikeys]
+#red_apikey = ""  # generate in user settings, needs torrent and user privileges
+#ops_apikey = ""  # generate in user settings, needs torrent and user privileges
+
+[userid]
+#red_user_id = 0 # from /user.php?id=xxx
+#ops_user_id = 0 # from /user.php?id=xxx
+
+[ratio]
+#minratio = 0.6 # reject releases if you are below this ratio
+
+[logs]
+loglevel = "trace" # trace, debug, info
