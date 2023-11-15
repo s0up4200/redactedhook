@@ -127,7 +127,7 @@ func fetchTorrentData(torrentID int, apiKey, apiBase, indexer string) (*Response
 	if responseData.Response.Torrent != nil {
 		releaseName := responseData.Response.Torrent.ReleaseName
 		uploader := responseData.Response.Torrent.Username
-		log.Debug().Msgf("Checking release: %s - (Uploader: %s) (TorrentID: %d)", releaseName, uploader, torrentID)
+		log.Debug().Msgf("[%s] Checking release: %s - (Uploader: %s) (TorrentID: %d)", indexer, releaseName, uploader, torrentID)
 	}
 
 	return responseData, nil
