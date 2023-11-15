@@ -3,10 +3,6 @@
 # build app
 FROM golang:1.20-alpine3.16 AS app-builder
 
-ARG VERSION=dev
-ARG REVISION=dev
-ARG BUILDTIME
-
 RUN apk add --no-cache git make build-base tzdata
 
 ENV SERVICE=redactedhook
@@ -21,7 +17,12 @@ COPY . ./
 #ENV GOOS=linux
 #ENV CGO_ENABLED=0
 
-RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o bin/redactedhook .
+ENV GIT_COMMIT := $(shell git rev-parse --short HEAD 2> /dev/null)
+ENV BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+ENV GOFLAGS="-X main.commit=$(GIT_COMMIT) -X main.version=$(GIT_TAG) -X main.buildDate=$(BUILD_DATE)"
+
+ARG BUILDTIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.buildDate=${BUILDTIME}" -o bin/redactedhook .
 
 # build runner
 FROM alpine:latest

@@ -9,6 +9,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var (
+	version   string
+	commit    string
+	buildDate string
+)
+
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05", NoColor: false})
 	var configPath string
@@ -30,7 +36,8 @@ func main() {
 	}
 
 	serverAddr := address + ":" + port
-	log.Info().Msg("Starting server on " + serverAddr)
+	log.Info().Msgf("Starting server on %s", serverAddr)
+	log.Info().Msgf("Version: %s, Commit: %s, Build Date: %s", version, commit, buildDate)
 	err := http.ListenAndServe(serverAddr, nil)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to start server")

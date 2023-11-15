@@ -17,7 +17,9 @@ ARG BUILDTIME
 ARG TARGETOS TARGETARCH
 
 RUN --mount=target=. \
-    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o /out/bin/redactedhook .
+    BUILDTIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+    GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.buildDate=${BUILDTIME}" -o /out/bin/redactedhook .
+
 # build runner
 FROM alpine:latest
 
