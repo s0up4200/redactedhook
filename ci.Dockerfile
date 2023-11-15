@@ -18,6 +18,7 @@ ARG TARGETOS TARGETARCH
 
 RUN --mount=target=. \
     BUILDTIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+    REVISION=$(git rev-parse --short HEAD) \
     GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.buildDate=${BUILDTIME}" -o /out/bin/redactedhook .
 
 # build runner
