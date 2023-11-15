@@ -80,29 +80,36 @@ func initConfig(configPath string) {
 }
 
 func determineConfigFile(configPath string) string {
+	// Use the provided configuration path if available
 	if configPath != "" {
 		return configPath
 	}
 
-	home, err := os.UserHomeDir()
+	// Default to the current working directory
+	cwd, err := os.Getwd()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get user home directory, using current directory instead")
-		return filepath.Join(".", defaultConfigFileName)
+		log.Error().Err(err).Msg("Failed to get current working directory, using current directory instead")
+		cwd = "." // default to the current directory
 	}
 
-	configDir := filepath.Join(home, defaultConfigDir)
-	configFile := filepath.Join(configDir, defaultConfigFileName)
-	if err := createConfigDirIfNotExist(configDir); err != nil {
-		log.Error().Err(err).Msg("Failed to create config directory, using current directory instead")
-		return filepath.Join(".", defaultConfigFileName)
+	configFile := filepath.Join(cwd, defaultConfigFileName)
+
+	// Ensure the config file exists
+	if err := createConfigFileIfNotExist(configFile); err != nil {
+		log.Fatal().Err(err).Msg("Failed to create or verify config file")
 	}
 
 	return configFile
 }
 
-func createConfigDirIfNotExist(dir string) error {
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		return os.MkdirAll(dir, os.ModePerm)
+func createConfigFileIfNotExist(configFile string) error {
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		// Create the default config file
+		defaultConfig := getDefaultConfig() // Ensure this function returns your default config
+		if err := os.WriteFile(configFile, defaultConfig, 0644); err != nil {
+			return err
+		}
+		log.Info().Msg("Created default config file")
 	}
 	return nil
 }
@@ -120,17 +127,6 @@ func setupViper(configFile string) {
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatal().Err(err).Msg("Error reading config file")
 	}
-}
-
-func createConfigFileIfNotExist(configFile string) error {
-	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		defaultConfig := getDefaultConfig()
-		if err := os.WriteFile(configFile, defaultConfig, 0644); err != nil {
-			return err
-		}
-		log.Info().Msg("Created default config file")
-	}
-	return nil
 }
 
 func getDefaultConfig() []byte {
