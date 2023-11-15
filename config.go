@@ -93,8 +93,8 @@ func determineConfigFile(configPath string) string {
 
 	var configDir string
 	if isRunningInDocker() {
-		// In Docker, default to the root directory
-		configDir = "/"
+		// In Docker, default to the mapped volume directory
+		configDir = "/redactedhook"
 	} else {
 		// For non-Docker, use the user's home directory with .config/redactedhook/
 		homeDir, err := os.UserHomeDir()
