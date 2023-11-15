@@ -79,20 +79,32 @@ func initConfig(configPath string) {
 	watchConfigChanges()
 }
 
+func isRunningInDocker() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+	return false
+}
+
 func determineConfigFile(configPath string) string {
-	// Use the provided configuration path if available
 	if configPath != "" {
 		return configPath
 	}
 
-	// Default to the current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get current working directory, using current directory instead")
-		cwd = "." // default to the current directory
+	var configDir string
+	if isRunningInDocker() {
+		// In Docker, default to the root directory
+		configDir = "/"
+	} else {
+		// For non-Docker, use the user's home directory with .config/redactedhook/
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to get user home directory")
+		}
+		configDir = filepath.Join(homeDir, ".config", "redactedhook")
 	}
 
-	configFile := filepath.Join(cwd, defaultConfigFileName)
+	configFile := filepath.Join(configDir, defaultConfigFileName)
 
 	// Ensure the config file exists
 	if err := createConfigFileIfNotExist(configFile); err != nil {
