@@ -176,7 +176,7 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(body, &requestData)
 	if err != nil {
-		log.Error().Msgf("Failed to unmarshal JSON payload: %s", err.Error())
+		log.Error().Msgf("[%s] Failed to unmarshal JSON payload: %s", requestData.Indexer, err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -281,7 +281,7 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 			usernames[i] = strings.TrimSpace(username)
 		}
 		usernamesStr := strings.Join(usernames, ", ") // Join the usernames with a comma and a single space
-		log.Trace().Msgf("Requested uploaders [%s]: %s", requestData.Mode, usernamesStr)
+		log.Trace().Msgf("[%s] Requested uploaders [%s]: %s", requestData.Indexer, requestData.Mode, usernamesStr)
 
 		isListed := false
 		for _, uname := range usernames {
@@ -293,7 +293,7 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 
 		if (requestData.Mode == "blacklist" && isListed) || (requestData.Mode == "whitelist" && !isListed) {
 			w.WriteHeader(StatusUploaderNotAllowed)
-			log.Debug().Msgf("Uploader (%s) is not allowed", username)
+			log.Debug().Msgf("[%s] Uploader (%s) is not allowed", requestData.Indexer, username)
 			return
 		}
 	}
@@ -320,13 +320,13 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		requestedRecordLabels := strings.Split(requestData.RecordLabel, ",")
 
 		if recordLabel == "" {
-			log.Debug().Msgf("No record label found for release: %s", name)
+			log.Debug().Msgf("[%s] No record label found for release: %s", requestData.Indexer, name)
 			w.WriteHeader(StatusLabelNotAllowed)
 			return
 		}
 
 		recordlabelsStr := strings.Trim(fmt.Sprint(requestedRecordLabels), "[]")
-		log.Trace().Msgf("Requested record labels: %v", recordlabelsStr)
+		log.Trace().Msgf("[%s] Requested record labels: %v", requestData.Indexer, recordlabelsStr)
 
 		isRecordLabelPresent := false
 		for _, rLabel := range requestedRecordLabels {
@@ -338,7 +338,7 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 
 		if !isRecordLabelPresent {
 			w.WriteHeader(StatusLabelNotAllowed)
-			log.Debug().Msgf("The record label '%s' is not included in the requested record labels: %v", recordLabel, requestedRecordLabels)
+			log.Debug().Msgf("[%s] The record label '%s' is not included in the requested record labels: %v", requestData.Indexer, recordLabel, requestedRecordLabels)
 			return
 		}
 	}
@@ -364,12 +364,12 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		minSize := bytesize.ByteSize(requestData.MinSize)
 		maxSize := bytesize.ByteSize(requestData.MaxSize)
 
-		log.Trace().Msgf("Torrent size: %s, Requested size range: %s - %s", torrentSize, requestData.MinSize, requestData.MaxSize)
+		log.Trace().Msgf("[%s] Torrent size: %s, Requested size range: %s - %s", requestData.Indexer, torrentSize, requestData.MinSize, requestData.MaxSize)
 
 		if (requestData.MinSize != 0 && torrentSize < minSize) ||
 			(requestData.MaxSize != 0 && torrentSize > maxSize) {
 			w.WriteHeader(StatusSizeNotAllowed)
-			log.Debug().Msgf("Torrent size %s is outside the requested size range: %s to %s", torrentSize, minSize, maxSize)
+			log.Debug().Msgf("[%s] Torrent size %s is outside the requested size range: %s to %s", requestData.Indexer, torrentSize, minSize, maxSize)
 			return
 		}
 	}
@@ -411,16 +411,16 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 			minRatio := requestData.MinRatio
 			username := userData.Response.Username
 
-			log.Trace().Msgf("MinRatio set to %.2f for %s on %s", minRatio, username, requestData.Indexer)
+			log.Trace().Msgf("[%s] MinRatio set to %.2f for %s", requestData.Indexer, minRatio, username)
 
 			if ratio < minRatio {
 				w.WriteHeader(StatusRatioNotAllowed)
-				log.Debug().Msgf("Returned ratio %.2f is below minratio %.2f for %s on %s", ratio, minRatio, username, requestData.Indexer)
+				log.Debug().Msgf("[%s] Returned ratio %.2f is below minratio %.2f for %s", requestData.Indexer, ratio, minRatio, username)
 				return
 			}
 		}
 	}
 
 	w.WriteHeader(http.StatusOK) // HTTP status code 200
-	log.Info().Msg("Conditions met, responding with status 200")
+	log.Info().Msgf("[%s] Conditions met, responding with status 200", requestData.Indexer)
 }
