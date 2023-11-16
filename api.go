@@ -121,6 +121,30 @@ func fetchAPI(endpoint, apiKey string, limiter *rate.Limiter, indexer string, ta
 	return nil
 }
 
+func fetchTorrentDataIfNeeded(requestData *RequestData, torrentData **ResponseData, apiBase string) error {
+	// If torrentData is already fetched, do nothing
+	if *torrentData != nil {
+		return nil
+	}
+
+	var apiKey string
+	switch requestData.Indexer {
+	case "redacted":
+		apiKey = requestData.REDKey
+	case "ops":
+		apiKey = requestData.OPSKey
+	default:
+		return fmt.Errorf("invalid indexer: %s", requestData.Indexer)
+	}
+
+	var err error
+	*torrentData, err = fetchTorrentData(requestData.TorrentID, apiKey, apiBase, requestData.Indexer)
+	if err != nil {
+		return fmt.Errorf("error fetching torrent data: %w", err)
+	}
+	return nil
+}
+
 func fetchTorrentData(torrentID int, apiKey, apiBase, indexer string) (*ResponseData, error) {
 	limiter := getLimiter(indexer)
 	if limiter == nil {
@@ -137,10 +161,48 @@ func fetchTorrentData(torrentID int, apiKey, apiBase, indexer string) (*Response
 	if responseData.Response.Torrent != nil {
 		releaseName := responseData.Response.Torrent.ReleaseName
 		uploader := responseData.Response.Torrent.Username
-		log.Debug().Msgf("[%s] Checking release: %s - (Uploader: %s) (TorrentID: %d)", indexer, releaseName, uploader, torrentID)
+		log.Debug().
+			Str("indexer", indexer).
+			Str("releaseName", releaseName).
+			Str("uploader", uploader).
+			Int("torrentID", torrentID).
+			Msg("Checking release")
 	}
 
 	return responseData, nil
+}
+
+func fetchUserDataIfNeeded(requestData *RequestData, userData **ResponseData, apiBase string) error {
+	if *userData != nil {
+		return nil
+	}
+
+	var userID int
+	var apiKey string
+	switch requestData.Indexer {
+	case "redacted":
+		userID = requestData.REDUserID
+		apiKey = requestData.REDKey
+	case "ops":
+		userID = requestData.OPSUserID
+		apiKey = requestData.OPSKey
+	default:
+		log.Error().Str("indexer", requestData.Indexer).Msg("Invalid indexer")
+		return fmt.Errorf("invalid indexer: %s", requestData.Indexer)
+	}
+
+	if userID == 0 {
+		log.Error().Str("indexer", requestData.Indexer).Msg("User ID is missing but required when minratio is set")
+		return fmt.Errorf("user ID is missing for indexer: %s", requestData.Indexer)
+	}
+
+	var err error
+	*userData, err = fetchUserData(userID, apiKey, requestData.Indexer, apiBase)
+	if err != nil {
+		log.Error().Err(err).Str("indexer", requestData.Indexer).Msg("Error fetching user data")
+		return fmt.Errorf("error fetching user data: %w", err)
+	}
+	return nil
 }
 
 func fetchUserData(userID int, apiKey, indexer, apiBase string) (*ResponseData, error) {
@@ -270,18 +332,9 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 
 	// hook uploader
 	if requestData.TorrentID != 0 && requestData.Uploaders != "" {
-		if torrentData == nil {
-			var apiKey string
-			if requestData.Indexer == "redacted" {
-				apiKey = requestData.REDKey
-			} else if requestData.Indexer == "ops" {
-				apiKey = requestData.OPSKey
-			}
-			torrentData, err = fetchTorrentData(requestData.TorrentID, apiKey, apiBase, requestData.Indexer)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+		if err := fetchTorrentDataIfNeeded(&requestData, &torrentData, apiBase); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		username := torrentData.Response.Torrent.Username
@@ -291,7 +344,10 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 			usernames[i] = strings.TrimSpace(username)
 		}
 		usernamesStr := strings.Join(usernames, ", ") // Join the usernames with a comma and a single space
-		log.Trace().Msgf("[%s] Requested uploaders [%s]: %s", requestData.Indexer, requestData.Mode, usernamesStr)
+		log.Trace().
+			Str("mode", requestData.Mode).
+			Str("requestedUploaders", usernamesStr).
+			Msg("Requested uploaders")
 
 		isListed := false
 		for _, uname := range usernames {
@@ -302,26 +358,19 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if (requestData.Mode == "blacklist" && isListed) || (requestData.Mode == "whitelist" && !isListed) {
-			w.WriteHeader(StatusUploaderNotAllowed)
-			log.Debug().Msgf("[%s] Uploader (%s) is not allowed", requestData.Indexer, username)
+			http.Error(w, "Uploader is not allowed", StatusUploaderNotAllowed)
+			log.Debug().
+				Str("uploader", username).
+				Msg("Uploader is not allowed")
 			return
 		}
 	}
 
 	// hook record label
 	if requestData.TorrentID != 0 && requestData.RecordLabel != "" {
-		if torrentData == nil {
-			var apiKey string
-			if requestData.Indexer == "redacted" {
-				apiKey = requestData.REDKey
-			} else if requestData.Indexer == "ops" {
-				apiKey = requestData.OPSKey
-			}
-			torrentData, err = fetchTorrentData(requestData.TorrentID, apiKey, apiBase, requestData.Indexer)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+		if err := fetchTorrentDataIfNeeded(&requestData, &torrentData, apiBase); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		recordLabel := torrentData.Response.Torrent.RecordLabel
@@ -330,13 +379,16 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		requestedRecordLabels := strings.Split(requestData.RecordLabel, ",")
 
 		if recordLabel == "" {
-			log.Debug().Msgf("[%s] No record label found for release: %s", requestData.Indexer, name)
-			w.WriteHeader(StatusLabelNotAllowed)
+			log.Debug().
+				Str("releaseName", name).
+				Msg("No record label found for release")
+			http.Error(w, "Record label not allowed", StatusLabelNotAllowed)
 			return
 		}
 
-		recordlabelsStr := strings.Trim(fmt.Sprint(requestedRecordLabels), "[]")
-		log.Trace().Msgf("[%s] Requested record labels: %v", requestData.Indexer, recordlabelsStr)
+		log.Trace().
+			Strs("requestedRecordLabels", requestedRecordLabels).
+			Msg("Requested record labels")
 
 		isRecordLabelPresent := false
 		for _, rLabel := range requestedRecordLabels {
@@ -347,26 +399,20 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !isRecordLabelPresent {
-			w.WriteHeader(StatusLabelNotAllowed)
-			log.Debug().Msgf("[%s] The record label '%s' is not included in the requested record labels: %v", requestData.Indexer, recordLabel, requestedRecordLabels)
+			log.Debug().
+				Str("recordLabel", recordLabel).
+				Strs("requestedRecordLabels", requestedRecordLabels).
+				Msg("The record label is not included in the requested record labels")
+			http.Error(w, "Record label not allowed", StatusLabelNotAllowed)
 			return
 		}
 	}
 
 	// hook size
 	if requestData.TorrentID != 0 && (requestData.MinSize != 0 || requestData.MaxSize != 0) {
-		if torrentData == nil {
-			var apiKey string
-			if requestData.Indexer == "redacted" {
-				apiKey = requestData.REDKey
-			} else if requestData.Indexer == "ops" {
-				apiKey = requestData.OPSKey
-			}
-			torrentData, err = fetchTorrentData(requestData.TorrentID, apiKey, apiBase, requestData.Indexer)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+		if err := fetchTorrentDataIfNeeded(&requestData, &torrentData, apiBase); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		torrentSize := bytesize.ByteSize(torrentData.Response.Torrent.Size)
@@ -374,63 +420,46 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		minSize := bytesize.ByteSize(requestData.MinSize)
 		maxSize := bytesize.ByteSize(requestData.MaxSize)
 
-		log.Trace().Msgf("[%s] Torrent size: %s, Requested size range: %s - %s", requestData.Indexer, torrentSize, requestData.MinSize, requestData.MaxSize)
+		log.Trace().
+			Str("torrentSize", torrentSize.String()).
+			Str("minSize", requestData.MinSize.String()).
+			Str("maxSize", requestData.MaxSize.String()).
+			Msg("Torrent size check")
 
 		if (requestData.MinSize != 0 && torrentSize < minSize) ||
 			(requestData.MaxSize != 0 && torrentSize > maxSize) {
-			w.WriteHeader(StatusSizeNotAllowed)
-			log.Debug().Msgf("[%s] Torrent size %s is outside the requested size range: %s to %s", requestData.Indexer, torrentSize, minSize, maxSize)
+			http.Error(w, "Torrent size is outside the requested size range", StatusSizeNotAllowed)
+			log.Debug().
+				Msg("Torrent size is outside the requested size range")
+
 			return
 		}
 	}
 
 	// hook ratio
 	if requestData.MinRatio != 0 {
-		var userID int
-		var apiKey string
-		if requestData.Indexer == "redacted" {
-			if requestData.REDUserID == 0 {
-				log.Error().Msg("red_user_id is missing but required when minratio is set for 'redacted'")
-				http.Error(w, "red_user_id is required for 'redacted' when minratio is set", http.StatusBadRequest)
-				return
-			}
-			userID = requestData.REDUserID
-			apiKey = requestData.REDKey
-			//log.Trace().Msgf("MinRatio check for Redacted with user ID: %d", userID)
-		} else if requestData.Indexer == "ops" {
-			if requestData.OPSUserID == 0 {
-				log.Error().Msg("ops_user_id is missing but required when minratio is set for 'ops'")
-				http.Error(w, "ops_user_id is required for 'ops' when minratio is set", http.StatusBadRequest)
-				return
-			}
-			userID = requestData.OPSUserID
-			apiKey = requestData.OPSKey
-			//log.Trace().Msgf("MinRatio check for OPS with user ID: %d", userID)
+		if err := fetchUserDataIfNeeded(&requestData, &userData, apiBase); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
-		if userID != 0 {
-			if userData == nil {
-				userData, err = fetchUserData(userID, apiKey, requestData.Indexer, apiBase)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-			}
+		ratio := userData.Response.Stats.Ratio
+		minRatio := requestData.MinRatio
+		username := userData.Response.Username
 
-			ratio := userData.Response.Stats.Ratio
-			minRatio := requestData.MinRatio
-			username := userData.Response.Username
+		log.Trace().
+			Float64("minRatio", minRatio).
+			Float64("userRatio", ratio).
+			Str("username", username).
+			Msg("Ratio check")
 
-			log.Trace().Msgf("[%s] MinRatio set to %.2f for %s", requestData.Indexer, minRatio, username)
-
-			if ratio < minRatio {
-				w.WriteHeader(StatusRatioNotAllowed)
-				log.Debug().Msgf("[%s] Returned ratio %.2f is below minratio %.2f for %s", requestData.Indexer, ratio, minRatio, username)
-				return
-			}
+		if ratio < minRatio {
+			http.Error(w, "Returned ratio is below minimum requirement", StatusRatioNotAllowed)
+			log.Debug().Msg("Returned ratio is below minratio")
+			return
 		}
 	}
 
 	w.WriteHeader(http.StatusOK) // HTTP status code 200
-	log.Info().Msgf("[%s] Conditions met, responding with status 200", requestData.Indexer)
+	log.Info().Msg("Conditions met, responding with status 200")
 }
