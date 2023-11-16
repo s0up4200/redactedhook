@@ -80,8 +80,11 @@ func initConfig(configPath string) {
 }
 
 func isRunningInDocker() bool {
-	if _, err := os.Stat("/.dockerenv"); err == nil {
-		return true
+	// Check for Docker-specific files or cgroup patterns
+	if _, err := os.Stat("/proc/self/cgroup"); err == nil {
+		if content, err := os.ReadFile("/proc/self/cgroup"); err == nil {
+			return strings.Contains(string(content), "docker")
+		}
 	}
 	return false
 }
