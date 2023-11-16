@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -27,8 +28,15 @@ const ( // HTTP status codes for custom logic
 	StatusRatioNotAllowed    = http.StatusIMUsed
 )
 
-var redactedLimiter = rate.NewLimiter(rate.Every(10*time.Second), 10)
-var orpheusLimiter = rate.NewLimiter(rate.Every(10*time.Second), 5)
+var (
+	redactedLimiter *rate.Limiter
+	orpheusLimiter  *rate.Limiter
+)
+
+func init() {
+	redactedLimiter = rate.NewLimiter(rate.Every(10*time.Second), 10)
+	orpheusLimiter = rate.NewLimiter(rate.Every(10*time.Second), 5)
+}
 
 type RequestData struct {
 	REDUserID   int               `json:"red_user_id,omitempty"`
@@ -82,24 +90,26 @@ func fetchAPI(endpoint, apiKey string, limiter *rate.Limiter, indexer string, ta
 
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
-		return err
+		log.Error().Msgf("fetchAPI error: %v", err)
 	}
 	req.Header.Set("Authorization", apiKey)
 
-	client := &http.Client{Timeout: time.Second * 10}
-	resp, err := client.Do(req)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	req = req.WithContext(ctx)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		log.Error().Msgf("fetchAPI error: %v", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		log.Error().Msgf("fetchAPI error: %v", err)
 	}
 
 	if err := json.Unmarshal(respBody, target); err != nil {
-		return err
+		log.Error().Msgf("fetchAPI error: %v", err)
 	}
 
 	responseData := target.(*ResponseData)
