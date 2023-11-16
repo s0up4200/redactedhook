@@ -253,12 +253,6 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Unmarshal the configuration
-	err = viper.Unmarshal(&config)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Unable to decode into struct")
-	}
-
 	if requestData.Indexer != "ops" && requestData.Indexer != "redacted" {
 		if requestData.Indexer == "" {
 			log.Error().Msg("No indexer provided")

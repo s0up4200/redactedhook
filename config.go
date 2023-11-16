@@ -206,9 +206,13 @@ func watchConfigChanges() {
 	viper.OnConfigChange(func(e fsnotify.Event) {
 		log.Debug().Msgf("Config file updated: %s", e.Name)
 		oldLogLevel := config.Logs.LogLevel
-		if err := viper.Unmarshal(&config); err != nil {
+		if err := viper.ReadInConfig(); err != nil {
 			log.Error().Err(err).Msg("Error reading config")
+		}
+		if err := viper.Unmarshal(&config); err != nil {
+			log.Error().Err(err).Msg("Error unmarshalling config")
 		} else {
+			parseSizeCheck() // Parse the size check values again
 			if oldLogLevel != config.Logs.LogLevel {
 				configureLogger()
 			}
