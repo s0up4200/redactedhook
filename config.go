@@ -204,20 +204,89 @@ func parseSizeCheck() {
 func watchConfigChanges() {
 	viper.WatchConfig()
 	viper.OnConfigChange(func(e fsnotify.Event) {
-		log.Debug().Msgf("Config file updated: %s", e.Name)
-		oldLogLevel := config.Logs.LogLevel
+
+		oldConfig := config
+
 		if err := viper.ReadInConfig(); err != nil {
 			log.Error().Err(err).Msg("Error reading config")
+			return
 		}
 		if err := viper.Unmarshal(&config); err != nil {
 			log.Error().Err(err).Msg("Error unmarshalling config")
-		} else {
-			parseSizeCheck() // Parse the size check values again
-			if oldLogLevel != config.Logs.LogLevel {
-				configureLogger()
-			}
+			return
 		}
+
+		parseSizeCheck()
+
+		logConfigChanges(oldConfig, config)
+
+		if oldConfig.Logs.LogLevel != config.Logs.LogLevel {
+			configureLogger()
+		}
+		log.Debug().Msgf("Config file updated: %s", e.Name)
 	})
+}
+
+func logConfigChanges(oldConfig, newConfig Config) {
+
+	if oldConfig.APIKeys.REDKey != newConfig.APIKeys.REDKey { // APIKeys
+		log.Debug().Msg("APIKeys.REDKey changed")
+	}
+	if oldConfig.APIKeys.OPSKey != newConfig.APIKeys.OPSKey {
+		log.Debug().Msg("APIKeys.OPSKey changed")
+	}
+
+	if oldConfig.UserID.REDUserID != newConfig.UserID.REDUserID { // UserIDs
+		log.Debug().Msgf("UserIDs.REDUserID changed from %d to %d", oldConfig.UserID.REDUserID, newConfig.UserID.REDUserID)
+	}
+	if oldConfig.UserID.OPSUserID != newConfig.UserID.OPSUserID {
+		log.Debug().Msgf("UserIDs.OPSUserID changed from %d to %d", oldConfig.UserID.OPSUserID, newConfig.UserID.OPSUserID)
+	}
+
+	if oldConfig.Ratio.MinRatio != newConfig.Ratio.MinRatio { // Ratio
+		log.Debug().Msgf("Ratio.MinRatio changed from %f to %f", oldConfig.Ratio.MinRatio, newConfig.Ratio.MinRatio)
+	}
+
+	oldMinSize, _ := bytesize.Parse(oldConfig.SizeCheck.MinSize)
+	newMinSize, _ := bytesize.Parse(newConfig.SizeCheck.MinSize)
+	if oldMinSize != newMinSize { // SizeCheck
+		log.Debug().Msgf("SizeCheck.MinSize changed from %s to %s", oldConfig.SizeCheck.MinSize, newConfig.SizeCheck.MinSize)
+	}
+
+	oldMaxSize, _ := bytesize.Parse(oldConfig.SizeCheck.MaxSize)
+	newMaxSize, _ := bytesize.Parse(newConfig.SizeCheck.MaxSize)
+	if oldMaxSize != newMaxSize { // SizeCheck
+		log.Debug().Msgf("SizeCheck.MaxSize changed from %s to %s", oldConfig.SizeCheck.MaxSize, newConfig.SizeCheck.MaxSize)
+	}
+
+	if oldConfig.Uploaders.Uploaders != newConfig.Uploaders.Uploaders { // Uploaders
+		log.Debug().Msgf("Uploaders.Uploaders changed from %s to %s", oldConfig.Uploaders.Uploaders, newConfig.Uploaders.Uploaders)
+	}
+	if oldConfig.Uploaders.Mode != newConfig.Uploaders.Mode { // Uploaders
+		log.Debug().Msgf("Uploaders.Mode changed from %s to %s", oldConfig.Uploaders.Mode, newConfig.Uploaders.Mode)
+	}
+
+	if oldConfig.Logs.LogLevel != newConfig.Logs.LogLevel { // Logs
+		log.Debug().Msgf("Logs.LogLevel changed from %s to %s", oldConfig.Logs.LogLevel, newConfig.Logs.LogLevel)
+	}
+	if oldConfig.Logs.LogToFile != newConfig.Logs.LogToFile { // Logs
+		log.Debug().Msgf("Logs.LogToFile changed from %t to %t", oldConfig.Logs.LogToFile, newConfig.Logs.LogToFile)
+	}
+	if oldConfig.Logs.LogFilePath != newConfig.Logs.LogFilePath { // Logs
+		log.Debug().Msgf("Logs.LogFilePath changed from %s to %s", oldConfig.Logs.LogFilePath, newConfig.Logs.LogFilePath)
+	}
+	if oldConfig.Logs.MaxSize != newConfig.Logs.MaxSize { // Logs
+		log.Debug().Msgf("Logs.MaxSize changed from %d to %d", oldConfig.Logs.MaxSize, newConfig.Logs.MaxSize)
+	}
+	if oldConfig.Logs.MaxBackups != newConfig.Logs.MaxBackups { // Logs
+		log.Debug().Msgf("Logs.MaxBackups changed from %d to %d", oldConfig.Logs.MaxBackups, newConfig.Logs.MaxBackups)
+	}
+	if oldConfig.Logs.MaxAge != newConfig.Logs.MaxAge { // Logs
+		log.Debug().Msgf("Logs.MaxAge changed from %d to %d", oldConfig.Logs.MaxAge, newConfig.Logs.MaxAge)
+	}
+	if oldConfig.Logs.Compress != newConfig.Logs.Compress { // Logs
+		log.Debug().Msgf("Logs.Compress changed from %t to %t", oldConfig.Logs.Compress, newConfig.Logs.Compress)
+	}
 }
 
 func configureLogger() {
@@ -261,5 +330,5 @@ func setLogLevel(level string) {
 		level = "debug"
 	}
 	zerolog.SetGlobalLevel(loglevel)
-	log.Info().Msgf("Log level: %s", level)
+	//log.Info().Msgf("Log level: %s", level)
 }
