@@ -261,10 +261,10 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 
 	// Check each field in requestData and fallback to config if empty
 	if requestData.REDUserID == 0 {
-		requestData.REDUserID = config.UserID.REDUserID
+		requestData.REDUserID = config.UserIDs.REDUserID
 	}
 	if requestData.OPSUserID == 0 {
-		requestData.OPSUserID = config.UserID.OPSUserID
+		requestData.OPSUserID = config.UserIDs.OPSUserID
 	}
 	if requestData.REDKey == "" {
 		requestData.REDKey = config.APIKeys.REDKey

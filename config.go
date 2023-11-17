@@ -25,7 +25,7 @@ var config Config
 
 type Config struct {
 	APIKeys     APIKeys   `mapstructure:"apikeys"`
-	UserID      UserIDs   `mapstructure:"userid"`
+	UserIDs     UserIDs   `mapstructure:"userid"`
 	Ratio       Ratio     `mapstructure:"ratio"`
 	SizeCheck   SizeCheck `mapstructure:"sizecheck"`
 	ParsedSizes ParsedSizeCheck
@@ -233,62 +233,62 @@ func watchConfigChanges() {
 func logConfigChanges(oldConfig, newConfig Config) {
 
 	if oldConfig.APIKeys.REDKey != newConfig.APIKeys.REDKey { // APIKeys
-		log.Debug().Msg("APIKeys.REDKey changed")
+		log.Debug().Msg("red_apikey changed")
 	}
 	if oldConfig.APIKeys.OPSKey != newConfig.APIKeys.OPSKey {
-		log.Debug().Msg("APIKeys.OPSKey changed")
+		log.Debug().Msg("ops_apikey changed")
 	}
 
-	if oldConfig.UserID.REDUserID != newConfig.UserID.REDUserID { // UserIDs
-		log.Debug().Msgf("UserIDs.REDUserID changed from %d to %d", oldConfig.UserID.REDUserID, newConfig.UserID.REDUserID)
+	if oldConfig.UserIDs.REDUserID != newConfig.UserIDs.REDUserID { // UserIDs
+		log.Debug().Msgf("REDUserID changed from %d to %d", oldConfig.UserIDs.REDUserID, newConfig.UserIDs.REDUserID)
 	}
-	if oldConfig.UserID.OPSUserID != newConfig.UserID.OPSUserID {
-		log.Debug().Msgf("UserIDs.OPSUserID changed from %d to %d", oldConfig.UserID.OPSUserID, newConfig.UserID.OPSUserID)
+	if oldConfig.UserIDs.OPSUserID != newConfig.UserIDs.OPSUserID {
+		log.Debug().Msgf("OPSUserID changed from %d to %d", oldConfig.UserIDs.OPSUserID, newConfig.UserIDs.OPSUserID)
 	}
 
 	if oldConfig.Ratio.MinRatio != newConfig.Ratio.MinRatio { // Ratio
-		log.Debug().Msgf("Ratio.MinRatio changed from %f to %f", oldConfig.Ratio.MinRatio, newConfig.Ratio.MinRatio)
+		log.Debug().Msgf("MinRatio changed from %f to %f", oldConfig.Ratio.MinRatio, newConfig.Ratio.MinRatio)
 	}
 
 	oldMinSize, _ := bytesize.Parse(oldConfig.SizeCheck.MinSize)
 	newMinSize, _ := bytesize.Parse(newConfig.SizeCheck.MinSize)
 	if oldMinSize != newMinSize { // SizeCheck
-		log.Debug().Msgf("SizeCheck.MinSize changed from %s to %s", oldConfig.SizeCheck.MinSize, newConfig.SizeCheck.MinSize)
+		log.Debug().Msgf("MinSize changed from %s to %s", oldConfig.SizeCheck.MinSize, newConfig.SizeCheck.MinSize)
 	}
 
 	oldMaxSize, _ := bytesize.Parse(oldConfig.SizeCheck.MaxSize)
 	newMaxSize, _ := bytesize.Parse(newConfig.SizeCheck.MaxSize)
 	if oldMaxSize != newMaxSize { // SizeCheck
-		log.Debug().Msgf("SizeCheck.MaxSize changed from %s to %s", oldConfig.SizeCheck.MaxSize, newConfig.SizeCheck.MaxSize)
+		log.Debug().Msgf("MaxSize changed from %s to %s", oldConfig.SizeCheck.MaxSize, newConfig.SizeCheck.MaxSize)
 	}
 
 	if oldConfig.Uploaders.Uploaders != newConfig.Uploaders.Uploaders { // Uploaders
-		log.Debug().Msgf("Uploaders.Uploaders changed from %s to %s", oldConfig.Uploaders.Uploaders, newConfig.Uploaders.Uploaders)
+		log.Debug().Msgf("Uploaders changed from %s to %s", oldConfig.Uploaders.Uploaders, newConfig.Uploaders.Uploaders)
 	}
 	if oldConfig.Uploaders.Mode != newConfig.Uploaders.Mode { // Uploaders
-		log.Debug().Msgf("Uploaders.Mode changed from %s to %s", oldConfig.Uploaders.Mode, newConfig.Uploaders.Mode)
+		log.Debug().Msgf("Uploader mode changed from %s to %s", oldConfig.Uploaders.Mode, newConfig.Uploaders.Mode)
 	}
 
 	if oldConfig.Logs.LogLevel != newConfig.Logs.LogLevel { // Logs
-		log.Debug().Msgf("Logs.LogLevel changed from %s to %s", oldConfig.Logs.LogLevel, newConfig.Logs.LogLevel)
+		log.Debug().Msgf("Log level changed from %s to %s", oldConfig.Logs.LogLevel, newConfig.Logs.LogLevel)
 	}
 	if oldConfig.Logs.LogToFile != newConfig.Logs.LogToFile { // Logs
-		log.Debug().Msgf("Logs.LogToFile changed from %t to %t", oldConfig.Logs.LogToFile, newConfig.Logs.LogToFile)
+		log.Debug().Msgf("LogToFile changed from %t to %t", oldConfig.Logs.LogToFile, newConfig.Logs.LogToFile)
 	}
 	if oldConfig.Logs.LogFilePath != newConfig.Logs.LogFilePath { // Logs
-		log.Debug().Msgf("Logs.LogFilePath changed from %s to %s", oldConfig.Logs.LogFilePath, newConfig.Logs.LogFilePath)
+		log.Debug().Msgf("LogFilePath changed from %s to %s", oldConfig.Logs.LogFilePath, newConfig.Logs.LogFilePath)
 	}
 	if oldConfig.Logs.MaxSize != newConfig.Logs.MaxSize { // Logs
-		log.Debug().Msgf("Logs.MaxSize changed from %d to %d", oldConfig.Logs.MaxSize, newConfig.Logs.MaxSize)
+		log.Debug().Msgf("Logs MaxSize changed from %d to %d", oldConfig.Logs.MaxSize, newConfig.Logs.MaxSize)
 	}
 	if oldConfig.Logs.MaxBackups != newConfig.Logs.MaxBackups { // Logs
-		log.Debug().Msgf("Logs.MaxBackups changed from %d to %d", oldConfig.Logs.MaxBackups, newConfig.Logs.MaxBackups)
+		log.Debug().Msgf("Logs MaxBackups changed from %d to %d", oldConfig.Logs.MaxBackups, newConfig.Logs.MaxBackups)
 	}
 	if oldConfig.Logs.MaxAge != newConfig.Logs.MaxAge { // Logs
-		log.Debug().Msgf("Logs.MaxAge changed from %d to %d", oldConfig.Logs.MaxAge, newConfig.Logs.MaxAge)
+		log.Debug().Msgf("Logs MaxAge changed from %d to %d", oldConfig.Logs.MaxAge, newConfig.Logs.MaxAge)
 	}
 	if oldConfig.Logs.Compress != newConfig.Logs.Compress { // Logs
-		log.Debug().Msgf("Logs.Compress changed from %t to %t", oldConfig.Logs.Compress, newConfig.Logs.Compress)
+		log.Debug().Msgf("Logs Compress changed from %t to %t", oldConfig.Logs.Compress, newConfig.Logs.Compress)
 	}
 }
 
@@ -320,18 +320,14 @@ func configureLogger() {
 }
 
 func setLogLevel(level string) {
-	var loglevel zerolog.Level
-	switch level {
-	case "trace":
-		loglevel = zerolog.TraceLevel
-	case "debug":
+	loglevel, err := zerolog.ParseLevel(level)
+	if err != nil {
+		// If the provided log level is invalid, log an error and default to debug level.
+		log.Error().Msgf("Invalid log level '%s', defaulting to 'debug'", level)
 		loglevel = zerolog.DebugLevel
-	case "info":
-		loglevel = zerolog.InfoLevel
-	default:
-		loglevel = zerolog.DebugLevel // default to DebugLevel if log level is empty
-		level = "debug"
 	}
+
+	// Apply the determined log level.
 	zerolog.SetGlobalLevel(loglevel)
-	//log.Info().Msgf("Log level: %s", level)
+	//log.Info().Msgf("Set log level to '%s'", loglevel.String())
 }
