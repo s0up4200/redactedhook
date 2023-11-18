@@ -41,9 +41,9 @@ ENV HOME="/redactedhook" \
 RUN apk --no-cache add ca-certificates curl tzdata jq
 
 # Set work directory and expose necessary ports
-WORKDIR /app
-VOLUME /config
-EXPOSE 7474
+WORKDIR /redactedhook
+VOLUME /redactedhook
+EXPOSE 42135
 
 # Set entrypoint
 ENTRYPOINT ["/usr/local/bin/redactedhook", "--config", "config.toml"]

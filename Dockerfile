@@ -33,9 +33,9 @@ ENV HOME="/redactedhook" \
 # Install runtime dependencies
 RUN apk --no-cache add ca-certificates curl tzdata jq
 
-WORKDIR /app
+WORKDIR /redactedhook
 
-VOLUME /config
+VOLUME /redactedhook
 
 COPY --from=app-builder /src/bin/redactedhook /usr/local/bin/
 

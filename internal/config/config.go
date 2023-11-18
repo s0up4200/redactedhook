@@ -113,25 +113,25 @@ func determineConfigFile(configPath string) string {
 
 	configFile := filepath.Join(configDir, defaultConfigFileName)
 
-	// Ensure the config file exists
-	if err := createConfigFileIfNotExist(configFile); err != nil {
-		log.Fatal().Err(err).Msg("Failed to create or verify config file")
-	}
+	//// Ensure the config file exists
+	//if err := createConfigFileIfNotExist(configFile); err != nil {
+	//	log.Fatal().Err(err).Msg("Failed to create or verify config file")
+	//}
 
 	return configFile
 }
 
-func createConfigFileIfNotExist(configFile string) error {
-	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		// Create the default config file
-		defaultConfig := getDefaultConfig() // Ensure this function returns your default config
-		if err := os.WriteFile(configFile, defaultConfig, 0644); err != nil {
-			return err
-		}
-		log.Info().Msg("Created default config file")
-	}
-	return nil
-}
+//func createConfigFileIfNotExist(configFile string) error {
+//	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+//		// Create the default config file
+//		defaultConfig := getDefaultConfig() // Ensure this function returns your default config
+//		if err := os.WriteFile(configFile, defaultConfig, 0644); err != nil {
+//			return err
+//		}
+//		log.Info().Msg("Created default config file")
+//	}
+//	return nil
+//}
 
 func setupViper(configFile string) {
 	viper.SetConfigType(defaultConfigType)
@@ -139,9 +139,9 @@ func setupViper(configFile string) {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.SetConfigFile(configFile)
 
-	if err := createConfigFileIfNotExist(configFile); err != nil {
-		log.Fatal().Err(err).Msg("Failed to create or verify config file")
-	}
+	//if err := createConfigFileIfNotExist(configFile); err != nil {
+	//	log.Fatal().Err(err).Msg("Failed to create or verify config file")
+	//}
 
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatal().Err(err).Msg("Error reading config file")
