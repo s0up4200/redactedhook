@@ -97,7 +97,7 @@ To use RedactedHook, send POST requests to the following endpoint:
 
 ```console
 Endpoint: http://127.0.0.1:42135/hook
-Header: X-API-Token YOUR_API_TOKEN
+Header: X-API-Token: YOUR_API_TOKEN
 Method: POST
 Expected HTTP Status: 200
 ```

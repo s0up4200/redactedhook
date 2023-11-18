@@ -426,10 +426,14 @@ func HookData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		recordLabel := torrentData.Response.Torrent.RecordLabel
+		recordLabel := strings.ToLower(strings.TrimSpace(torrentData.Response.Torrent.RecordLabel))
 		name := torrentData.Response.Group.Name
 		//releaseName := torrentData.Response.Torrent.ReleaseName
 		requestedRecordLabels := strings.Split(requestData.RecordLabel, ",")
+
+		for i, label := range requestedRecordLabels {
+			requestedRecordLabels[i] = strings.ToLower(strings.TrimSpace(label))
+		}
 
 		if recordLabel == "" {
 			log.Debug().Msgf("[%s] No record label found for release: %s", requestData.Indexer, name)
