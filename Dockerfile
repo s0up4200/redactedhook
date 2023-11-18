@@ -26,7 +26,7 @@ FROM alpine:latest
 
 LABEL org.opencontainers.image.source = "https://github.com/s0up4200/redactedhook"
 
-ENV HOME="/config" \
+ENV HOME="/redactedhook" \
     XDG_CONFIG_HOME="/redactedhook" \
     XDG_DATA_HOME="/redactedhook"
 
