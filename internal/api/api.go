@@ -430,9 +430,11 @@ func HookData(w http.ResponseWriter, r *http.Request) {
 		name := torrentData.Response.Group.Name
 		//releaseName := torrentData.Response.Torrent.ReleaseName
 		requestedRecordLabels := strings.Split(requestData.RecordLabel, ",")
+		originalRequestedLabels := make([]string, len(requestedRecordLabels)) // Store original labels for logging
 
 		for i, label := range requestedRecordLabels {
-			requestedRecordLabels[i] = strings.ToLower(strings.TrimSpace(label))
+			originalRequestedLabels[i] = label                                   // Keep the original label for logging
+			requestedRecordLabels[i] = strings.ToLower(strings.TrimSpace(label)) // Normalize for comparison
 		}
 
 		if recordLabel == "" {
@@ -441,7 +443,8 @@ func HookData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		recordlabelsStr := strings.Trim(fmt.Sprint(requestedRecordLabels), "[]")
+		// Use the original labels for logging
+		recordlabelsStr := strings.Trim(fmt.Sprint(originalRequestedLabels), "[]")
 		log.Trace().Msgf("[%s] Requested record labels: %v", requestData.Indexer, recordlabelsStr)
 
 		isRecordLabelPresent := false
