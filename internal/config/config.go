@@ -100,7 +100,7 @@ func determineConfigFile(configPath string) string {
 		// In Docker, default to the mapped volume directory
 		configDir = os.Getenv("XDG_CONFIG_HOME")
 		if configDir == "" {
-			configDir = "/config"
+			configDir = "/redactedhook"
 		}
 	} else {
 		// For non-Docker, use the user's home directory with .config/redactedhook/
