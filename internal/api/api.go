@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -224,6 +225,60 @@ func getLimiter(indexer string) *rate.Limiter {
 	}
 }
 
+func validateRequestData(requestData *RequestData) error {
+
+	alphanumericRegex := regexp.MustCompile(`^[a-zA-Z0-9]+$`) // Alphanumeric characters only
+
+	if requestData.Indexer != "ops" && requestData.Indexer != "redacted" {
+		return fmt.Errorf("invalid indexer: %s", requestData.Indexer)
+	}
+
+	// Validate TorrentID if provided
+	if requestData.TorrentID < 0 {
+		return fmt.Errorf("invalid torrent ID: %d", requestData.TorrentID)
+	}
+
+	// Validate API keys if provided
+	if requestData.REDKey != "" && len(requestData.REDKey) < 32 { // 16 bits
+		return fmt.Errorf("REDKey is too short")
+	}
+	if requestData.OPSKey != "" && len(requestData.OPSKey) < 32 { //
+		return fmt.Errorf("OPSKey is too short")
+	}
+
+	// Validate MinRatio if provided
+	if requestData.MinRatio < 0 {
+		return fmt.Errorf("minratio cannot be negative")
+	}
+
+	// Validate MinSize and MaxSize
+	if requestData.MaxSize > 0 && requestData.MinSize > requestData.MaxSize {
+		return fmt.Errorf("minsize cannot be greater than maxsize")
+	}
+
+	// Validate Uploaders if provided
+	if requestData.Uploaders != "" && !alphanumericRegex.MatchString(requestData.Uploaders) {
+		return fmt.Errorf("uploaders field should only contain alphanumeric characters")
+	}
+
+	// Validate RecordLabel if provided
+	if requestData.RecordLabel != "" && !alphanumericRegex.MatchString(requestData.RecordLabel) {
+		return fmt.Errorf("record_labels field should only contain alphanumeric characters")
+	}
+
+	// Validate Mode if provided
+	if requestData.Mode != "" && requestData.Mode != "blacklist" && requestData.Mode != "whitelist" {
+		return fmt.Errorf("invalid mode: %s", requestData.Mode)
+	}
+
+	// Validate TorrentName if provided
+	//if requestData.TorrentName != "" {
+	//	// Add specific checks if necessary, e.g., format, character restrictions
+	//}
+
+	return nil
+}
+
 func HookData(w http.ResponseWriter, r *http.Request) {
 
 	var torrentData *ResponseData
@@ -232,22 +287,30 @@ func HookData(w http.ResponseWriter, r *http.Request) {
 
 	cfg := config.GetConfig()
 
+	// Check for API key in the request header
+	apiKeyHeader := r.Header.Get("X-API-Token")
+	if cfg.Authorization.APIToken == "" || apiKeyHeader != cfg.Authorization.APIToken {
+		log.Error().Msg("Invalid or missing API key")
+		http.Error(w, "Invalid or missing API key", http.StatusUnauthorized)
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is supported", http.StatusBadRequest)
+		log.Warn().Msgf("Invalid method: %s", r.Method)
 		return
 	}
 
-	// Read JSON payload from the request body
-	body, err := io.ReadAll(r.Body)
+	// Read and validate JSON payload
+	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
+		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		log.Warn().Msgf("Invalid JSON payload: %v", err)
+		return
+	}
 	defer r.Body.Close()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 
-	err = json.Unmarshal(body, &requestData)
-	if err != nil {
-		log.Error().Msgf("[%s] Failed to unmarshal JSON payload: %s", requestData.Indexer, err.Error())
+	// Validate requestData fields
+	if err := validateRequestData(&requestData); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -271,10 +334,10 @@ func HookData(w http.ResponseWriter, r *http.Request) {
 		requestData.OPSUserID = cfg.UserIDs.OPSUserID
 	}
 	if requestData.REDKey == "" {
-		requestData.REDKey = cfg.APIKeys.REDKey
+		requestData.REDKey = cfg.IndexerKeys.REDKey
 	}
 	if requestData.OPSKey == "" {
-		requestData.OPSKey = cfg.APIKeys.OPSKey
+		requestData.OPSKey = cfg.IndexerKeys.OPSKey
 	}
 	if requestData.MinRatio == 0 {
 		requestData.MinRatio = cfg.Ratio.MinRatio
@@ -290,6 +353,9 @@ func HookData(w http.ResponseWriter, r *http.Request) {
 	}
 	if requestData.Mode == "" {
 		requestData.Mode = cfg.Uploaders.Mode
+	}
+	if requestData.RecordLabel == "" {
+		requestData.RecordLabel = cfg.RecordLabels.RecordLabels
 	}
 
 	// Log request received
@@ -317,7 +383,7 @@ func HookData(w http.ResponseWriter, r *http.Request) {
 	}
 	reqHeader.Set("Authorization", apiKey)
 
-	err = viper.Unmarshal(&cfg)
+	err := viper.Unmarshal(&cfg)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Unable to decode into struct")
 	}

@@ -24,16 +24,22 @@ const (
 var config Config
 
 type Config struct {
-	APIKeys     APIKeys   `mapstructure:"apikeys"`
-	UserIDs     UserIDs   `mapstructure:"userid"`
-	Ratio       Ratio     `mapstructure:"ratio"`
-	SizeCheck   SizeCheck `mapstructure:"sizecheck"`
-	ParsedSizes ParsedSizeCheck
-	Uploaders   Uploaders `mapstructure:"uploaders"`
-	Logs        Logs      `mapstructure:"logs"`
+	IndexerKeys   IndexerKeys   `mapstructure:"indexer_keys"`
+	Authorization Authorization `mapstructure:"authorization"`
+	UserIDs       UserIDs       `mapstructure:"userid"`
+	Ratio         Ratio         `mapstructure:"ratio"`
+	SizeCheck     SizeCheck     `mapstructure:"sizecheck"`
+	ParsedSizes   ParsedSizeCheck
+	Uploaders     Uploaders    `mapstructure:"uploaders"`
+	RecordLabels  RecordLabels `mapstructure:"record_labels"`
+	Logs          Logs         `mapstructure:"logs"`
 }
 
-type APIKeys struct {
+type Authorization struct {
+	APIToken string `mapstructure:"api_token"`
+}
+
+type IndexerKeys struct {
 	REDKey string `mapstructure:"red_apikey"`
 	OPSKey string `mapstructure:"ops_apikey"`
 }
@@ -60,6 +66,10 @@ type ParsedSizeCheck struct {
 type Uploaders struct {
 	Uploaders string `mapstructure:"uploaders"`
 	Mode      string `mapstructure:"mode"`
+}
+
+type RecordLabels struct {
+	RecordLabels string `mapstructure:"record_labels"`
 }
 
 type Logs struct {
@@ -149,7 +159,10 @@ func setupViper(configFile string) {
 }
 
 func getDefaultConfig() []byte {
-	return []byte(`[apikeys]
+	return []byte(`[authorization]
+api_token = ""    # generate with ./redactedhook generate-apitoken
+
+[indexer_keys]
 #red_apikey = ""  # generate in user settings, needs torrent and user privileges
 #ops_apikey = ""  # generate in user settings, needs torrent and user privileges
 
@@ -167,6 +180,9 @@ func getDefaultConfig() []byte {
 [uploaders]
 #uploaders = ""   # comma separated list of uploaders to allow
 #mode = ""        # whitelist or blacklist
+
+[record_labels]
+#record_labels = "" # comma separated list of record labels to filter for
 
 [logs]
 loglevel = "trace" # trace, debug, info
@@ -236,10 +252,10 @@ func watchConfigChanges() {
 
 func logConfigChanges(oldConfig, newConfig Config) {
 
-	if oldConfig.APIKeys.REDKey != newConfig.APIKeys.REDKey { // APIKeys
+	if oldConfig.IndexerKeys.REDKey != newConfig.IndexerKeys.REDKey { // IndexerKeys
 		log.Debug().Msg("red_apikey changed")
 	}
-	if oldConfig.APIKeys.OPSKey != newConfig.APIKeys.OPSKey {
+	if oldConfig.IndexerKeys.OPSKey != newConfig.IndexerKeys.OPSKey {
 		log.Debug().Msg("ops_apikey changed")
 	}
 

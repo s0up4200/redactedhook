@@ -38,7 +38,7 @@ docker pull ghcr.io/s0up4200/redactedhook:latest
 #### Docker Compose
 
 ```docker
-version: "3.7"
+version: "3.8"
 services:
   redactedhook:
     container_name: redactedhook
@@ -47,8 +47,12 @@ services:
     environment:
       - SERVER_ADDRESS=0.0.0.0 # binds to 127.0.0.1 by default
       - SERVER_PORT=42135 # defaults to 42135
+      - TZ=UTC
     ports:
-      - "42135:42135"
+      - "127.0.0.1:42135:42135"
+    volumes:
+      - /redactedhook:/redactedhook:rw
+    restart: unless-stopped
 ```
 
 #### Using precompiled binaries
@@ -84,7 +88,7 @@ Download the appropriate binary for your platform from the [releases](https://gi
 4. Run the compiled binary:
 
     ```bash
-    ./bin/RedactedHook
+    ./bin/RedactedHook --config /path/to/config.toml
     ```
 
 ## Usage
@@ -92,68 +96,88 @@ Download the appropriate binary for your platform from the [releases](https://gi
 To use RedactedHook, send POST requests to the following endpoint:
 
 ```console
-Endpoint: <http://127.0.0.1:42135/hook>
+Endpoint: http://127.0.0.1:42135/hook
+Header: X-API-Token YOUR_API_TOKEN
 Method: POST
 Expected HTTP Status: 200
 ```
 
-You can check ratio, uploader, size and, record label in a single request or separately.
+You can check ratio, uploader (whitelist and blacklist), minsize, maxsize, and record labels in a single request, or separately.
 
-**JSON Payload for everything:**
+### Authorization
+
+API Token can be generated like this: `redactedhook generate-apitoken`
+
+Set it in the config, and use it as a header like:
+
+![autobrr-external-filter-example](<.github/images/autobrr-external-filters.png>)
+
+`CURL` if you want to test:
+
+```bash
+curl -X PUT \
+     -H "X-API-Token: s3cr3tt0k3n" \
+     -H "Content-Type: application/json" \
+     -d '{ "torrent_id": {{.TorrentID}}, "indexer": "{{ .Indexer | js }}", "torrentname": "{{ .TorrentName | js }}"} \
+     http://127.0.0.1:42135/hook
+```
+
+### Config
+
+Most of `requestData` can be set in `config.toml` to reduce the payload from autobrr. Config template can be found [here](./config.toml).
+
+```toml
+[authorization]
+api_token = "" # generate with "redactedhook generate-apitoken"
+# the api_token needs to be set as a header for the webhook to work
+# eg. Header: X-API-TOKEN: asd987gsd98g7324kjh142kjh
+
+[indexer_keys]
+#red_apikey = "" # generate in user settings, needs torrent and user privileges
+#ops_apikey = "" # generate in user settings, needs torrent and user privileges
+
+[userid]
+#red_user_id = 0 # from /user.php?id=xxx
+#ops_user_id = 0 # from /user.php?id=xxx
+
+[ratio]
+#minratio = 0.6 # reject releases if you are below this ratio
+
+[sizecheck]
+#minsize = "100MB" # minimum size for checking, e.g., "10MB"
+#maxsize = "500MB" # maximum size for checking, e.g., "1GB"
+
+[uploaders]
+#uploaders = "greatest-uploader" # comma separated list of uploaders to allow
+#mode = "whitelist" # whitelist or blacklist
+
+[record_labels]
+#record_labels = "" # comma separated list of record labels to filter for
+
+[logs]
+loglevel = "trace"               # trace, debug, info
+logtofile = false                # Set to true to enable logging to a file
+logfilepath = "/redactedhook/redactedhook.log" # Path to the log file
+maxsize = 10                     # Max file size in MB
+maxbackups = 3                   # Max number of old log files to keep
+maxage = 28                      # Max age in days to keep a log file
+compress = false                 # Whether to compress old log files
+
+```
+
+### Payload
+
+**The minimum required data to send with the webhook:**
 
 ```json
 {
-  "indexer": "{{ .Indexer | js }}",
-  "red_user_id": USER_ID,
-  "ops_user_id": USER_ID,
-  "red_apikey": "RED_API_KEY",
-  "ops_apikey": "OPS_API_KEY",
-  "minratio": MINIMUM_RATIO,
-  "torrent_id": {{.TorrentID}},
-  "uploaders": "USER1,USER2,USER3",
-  "mode": "blacklist/whitelist",
-  "record_labels": "LABEL1,LABEL2,LABEL3"
+    "torrent_id": {{.TorrentID}},
+    "indexer": "{{ .Indexer | js }}",
+    "torrentname": "{{ .TorrentName | js }}",
 }
 ```
 
-**JSON Payload for ratio check:**
-
-```json
-{
-  "indexer": "{{ .Indexer | js }}",
-  "red_user_id": USER_ID,
-  "ops_user_id": USER_ID,
-  "red_apikey": "RED_API_KEY",
-  "ops_apikey": "OPS_API_KEY",
-  "minratio": MINIMUM_RATIO
-}
-```
-
-**JSON Payload for uploader and size check:**
-
-```json
-{
-  "indexer": "{{ .Indexer | js }}",
-  "torrent_id": {{.TorrentID}},
-  "red_apikey": "RED_API_KEY",
-  "ops_apikey": "OPS_API_KEY",
-  "uploaders": "USER1,USER2,USER3",
-  "mode": "blacklist/whitelist",
-  "maxsize": 340155737
-}
-```
-
-**JSON Payload for record label check:**
-
-```json
-{
-  "indexer": "{{ .Indexer | js }}",
-  "torrent_id": {{.TorrentID}},
-  "red_apikey": "RED_API_KEY",
-  "ops_apikey": "OPS_API_KEY",
-  "record_labels": "LABEL1,LABEL2,LABEL3"
-}
-```
+Everything else can be set in the `config.toml`, but you can set them in the webhook as well, if you want to filter by different things in different filters.
 
 `indexer` - `"{{ .Indexer | js }}"` this is the indexer that pushed the release within autobrr.
 
@@ -171,24 +195,10 @@ You can check ratio, uploader, size and, record label in a single request or sep
 
 `record_labels` is a comma-separated list of record labels to check against.
 
-`minsize` is the minimum allowed size **measured in bytes** you want to grab.
+`minsize` is the minimum allowed size you want to grab. Eg. `100MB`
 
-`maxsize` is the max allowed size **measured in bytes** you want to grab.
+`maxsize` is the max allowed size you want to grab. Eg. `500MB`
 
-`uploaders` is a comma-separated list of uploaders to check against.
+`uploaders` **(CASE SENSITIVE)** is a comma-separated list of uploaders to check against.
 
 `mode` is either blacklist or whitelist. If blacklist is used, the torrent will be stopped if the uploader is found in the list. If whitelist is used, the torrent will be stopped if the uploader is not found in the list.
-
-### curl commands for easy testing
-
-```bash
-curl -X POST -H "Content-Type: application/json" -d '{"indexer": "redacted", "red_user_id": 3855, "red_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "ops_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "minratio": 1.0}' http://127.0.0.1:42135/hook
-```
-
-```bash
-curl -X POST -H "Content-Type: application/json" -d '{"indexer": "redacted", "torrent_id": 3931392, "red_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "ops_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "mode": "blacklist", "uploaders": "blacklisted_user1,blacklisted_user2,blacklisted_user3"}' http://127.0.0.1:42135/hook
-```
-
-```bash
-curl -X POST -H "Content-Type: application/json" -d '{"indexer": "redacted", "torrent_id": 3931392, "red_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "ops_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "maxsize": 340155737}' http://127.0.0.1:42135/hook
-```

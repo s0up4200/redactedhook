@@ -1,7 +1,10 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -18,12 +21,29 @@ var (
 	buildDate string
 )
 
+func GenerateAPIToken(length int) string {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(b)
+}
+
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05", NoColor: false})
 	var configPath string
 
 	flag.StringVar(&configPath, "config", "", "Path to the configuration file")
 	flag.Parse()
+
+	if len(os.Args) > 1 && os.Args[1] == "generate-apitoken" {
+		apiKey := GenerateAPIToken(16)
+		if apiKey == "" {
+			log.Fatal().Msg("Failed to generate API key")
+		}
+		fmt.Println("Generated API Key:", apiKey)
+		return
+	}
 
 	config.InitConfig(configPath)
 
