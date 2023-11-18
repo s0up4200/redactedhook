@@ -307,7 +307,7 @@ func configureLogger() {
 	if config.Logs.LogToFile {
 		logFilePath := config.Logs.LogFilePath
 		if logFilePath == "" && isRunningInDocker() {
-			logFilePath = "/config/logs/redactedhook.log" // Use a sensible default in Docker
+			logFilePath = "/redactedhook/redactedhook.log" // Use a sensible default in Docker
 		}
 		fileWriter := &lumberjack.Logger{
 			Filename:   logFilePath,

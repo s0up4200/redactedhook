@@ -27,8 +27,8 @@ FROM alpine:latest
 LABEL org.opencontainers.image.source = "https://github.com/s0up4200/redactedhook"
 
 ENV HOME="/config" \
-    XDG_CONFIG_HOME="/config" \
-    XDG_DATA_HOME="/config"
+    XDG_CONFIG_HOME="/redactedhook" \
+    XDG_DATA_HOME="/redactedhook"
 
 # Install runtime dependencies
 RUN apk --no-cache add ca-certificates curl tzdata jq
