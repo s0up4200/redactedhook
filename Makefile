@@ -8,7 +8,9 @@ GIT_TAG := $(shell git describe --abbrev=0 --tags)
 SERVICE = redactedhook
 GO = go
 RM = rm
-GOFLAGS = "-X main.commit=$(GIT_COMMIT) -X main.version=$(GIT_TAG)"
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2> /dev/null)
+BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+GOFLAGS = "-X main.commit=$(GIT_COMMIT) -X main.version=$(GIT_TAG) -X main.buildDate=$(BUILD_DATE)"
 PREFIX = /usr/local
 BINDIR = bin
 
@@ -23,7 +25,7 @@ test:
 build: deps build/app
 
 build/app:
-	go build -ldflags $(GOFLAGS) -o bin/$(SERVICE) ./main.go
+	go build -ldflags $(GOFLAGS) -o bin/$(SERVICE) .
 
 build/docker:
 	docker build -t redactedhook:dev -f Dockerfile . --build-arg GIT_TAG=$(GIT_TAG) --build-arg GIT_COMMIT=$(GIT_COMMIT)
