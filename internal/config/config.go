@@ -95,17 +95,20 @@ func determineConfigFile(configPath string) string {
 		return configPath
 	}
 
-	var configDir string
+	configDir := defaultConfigDir
 	if isRunningInDocker() {
 		// In Docker, default to the mapped volume directory
-		configDir = "/redactedhook"
+		configDir = os.Getenv("XDG_CONFIG_HOME")
+		if configDir == "" {
+			configDir = "/config"
+		}
 	} else {
 		// For non-Docker, use the user's home directory with .config/redactedhook/
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to get user home directory")
 		}
-		configDir = filepath.Join(homeDir, ".config", "redactedhook")
+		configDir = filepath.Join(homeDir, defaultConfigDir)
 	}
 
 	configFile := filepath.Join(configDir, defaultConfigFileName)
@@ -302,8 +305,12 @@ func configureLogger() {
 
 	// If logtofile is true, also log to file
 	if config.Logs.LogToFile {
+		logFilePath := config.Logs.LogFilePath
+		if logFilePath == "" && isRunningInDocker() {
+			logFilePath = "/config/logs/redactedhook.log" // Use a sensible default in Docker
+		}
 		fileWriter := &lumberjack.Logger{
-			Filename:   config.Logs.LogFilePath,
+			Filename:   logFilePath,
 			MaxSize:    config.Logs.MaxSize,    // megabytes
 			MaxBackups: config.Logs.MaxBackups, // number of backups
 			MaxAge:     config.Logs.MaxAge,     // days
