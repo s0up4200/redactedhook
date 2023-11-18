@@ -1,28 +1,25 @@
-
-
 # build app
 FROM golang:1.20-alpine3.16 AS app-builder
 
-RUN apk add --no-cache git make build-base tzdata
+ARG VERSION=dev
+ARG REVISION=dev
+ARG BUILDTIME
+
+# Install only necessary packages for the build
+RUN apk add --no-cache git tzdata
 
 ENV SERVICE=redactedhook
 
 WORKDIR /src
 
+# Cache go modules
 COPY go.mod go.sum ./
 RUN go mod download
 
+# Copy rest of the source code
 COPY . ./
 
-#ENV GOOS=linux
-#ENV CGO_ENABLED=0
-
-ENV GIT_COMMIT := $(shell git rev-parse --short HEAD 2> /dev/null)
-ENV BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-ENV GOFLAGS="-X main.commit=$(GIT_COMMIT) -X main.version=$(GIT_TAG) -X main.buildDate=$(BUILD_DATE)"
-
-ARG BUILDTIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.buildDate=${BUILDTIME}" -o bin/redactedhook .
+RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o bin/redactedhook ./main.go
 
 # build runner
 FROM alpine:latest
@@ -33,6 +30,7 @@ ENV HOME="/config" \
     XDG_CONFIG_HOME="/config" \
     XDG_DATA_HOME="/config"
 
+# Install runtime dependencies
 RUN apk --no-cache add ca-certificates curl tzdata jq
 
 WORKDIR /app
@@ -43,5 +41,4 @@ COPY --from=app-builder /src/bin/redactedhook /usr/local/bin/
 
 EXPOSE 42135
 
-ENTRYPOINT ["/usr/local/bin/redactedhook"]
-#CMD ["--config", "/config"]
+ENTRYPOINT ["/usr/local/bin/redactedhook", "--config", "/config"]
