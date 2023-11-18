@@ -46,7 +46,7 @@ VOLUME /config
 EXPOSE 7474
 
 # Set entrypoint
-ENTRYPOINT ["/usr/local/bin/redactedhook", "--config", "/config"]
+ENTRYPOINT ["/usr/local/bin/redactedhook", "--config", "config.toml"]
 
 # Copy binary from app-builder
 COPY --from=app-builder /out/bin/redactedhook /usr/local/bin/

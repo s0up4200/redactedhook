@@ -41,4 +41,4 @@ COPY --from=app-builder /src/bin/redactedhook /usr/local/bin/
 
 EXPOSE 42135
 
-ENTRYPOINT ["/usr/local/bin/redactedhook", "--config", "/config"]
+ENTRYPOINT ["/usr/local/bin/redactedhook", "--config", "config.toml"]
