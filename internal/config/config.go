@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"io"
@@ -72,7 +72,11 @@ type Logs struct {
 	Compress    bool   `mapstructure:"compress"`   // Whether to compress old log files
 }
 
-func initConfig(configPath string) {
+func GetConfig() *Config {
+	return &config
+}
+
+func InitConfig(configPath string) {
 	configFile := determineConfigFile(configPath)
 	setupViper(configFile)
 	readAndUnmarshalConfig()

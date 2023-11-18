@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"context"
@@ -13,6 +13,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"golang.org/x/time/rate"
+
+	"github.com/s0up4200/redactedhook/internal/config"
 )
 
 const (
@@ -222,11 +224,13 @@ func getLimiter(indexer string) *rate.Limiter {
 	}
 }
 
-func hookData(w http.ResponseWriter, r *http.Request) {
+func HookData(w http.ResponseWriter, r *http.Request) {
 
 	var torrentData *ResponseData
 	var userData *ResponseData
 	var requestData RequestData
+
+	cfg := config.GetConfig()
 
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST method is supported", http.StatusBadRequest)
@@ -261,31 +265,31 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 
 	// Check each field in requestData and fallback to config if empty
 	if requestData.REDUserID == 0 {
-		requestData.REDUserID = config.UserIDs.REDUserID
+		requestData.REDUserID = cfg.UserIDs.REDUserID
 	}
 	if requestData.OPSUserID == 0 {
-		requestData.OPSUserID = config.UserIDs.OPSUserID
+		requestData.OPSUserID = cfg.UserIDs.OPSUserID
 	}
 	if requestData.REDKey == "" {
-		requestData.REDKey = config.APIKeys.REDKey
+		requestData.REDKey = cfg.APIKeys.REDKey
 	}
 	if requestData.OPSKey == "" {
-		requestData.OPSKey = config.APIKeys.OPSKey
+		requestData.OPSKey = cfg.APIKeys.OPSKey
 	}
 	if requestData.MinRatio == 0 {
-		requestData.MinRatio = config.Ratio.MinRatio
+		requestData.MinRatio = cfg.Ratio.MinRatio
 	}
 	if requestData.MinSize == 0 {
-		requestData.MinSize = bytesize.ByteSize(config.ParsedSizes.MinSize)
+		requestData.MinSize = bytesize.ByteSize(cfg.ParsedSizes.MinSize)
 	}
 	if requestData.MaxSize == 0 {
-		requestData.MaxSize = bytesize.ByteSize(config.ParsedSizes.MaxSize)
+		requestData.MaxSize = bytesize.ByteSize(cfg.ParsedSizes.MaxSize)
 	}
 	if requestData.Uploaders == "" {
-		requestData.Uploaders = config.Uploaders.Uploaders
+		requestData.Uploaders = cfg.Uploaders.Uploaders
 	}
 	if requestData.Mode == "" {
-		requestData.Mode = config.Uploaders.Mode
+		requestData.Mode = cfg.Uploaders.Mode
 	}
 
 	// Log request received
@@ -313,7 +317,6 @@ func hookData(w http.ResponseWriter, r *http.Request) {
 	}
 	reqHeader.Set("Authorization", apiKey)
 
-	var cfg Config
 	err = viper.Unmarshal(&cfg)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Unable to decode into struct")

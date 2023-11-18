@@ -1,4 +1,4 @@
-module RedactedHook
+module github.com/s0up4200/redactedhook
 
 go 1.20
 

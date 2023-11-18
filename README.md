@@ -35,7 +35,7 @@ To run RedactedHook, you'll need:
 docker pull ghcr.io/s0up4200/redactedhook:latest
 ```
 
-**docker compose**
+#### Docker Compose
 
 ```docker
 version: "3.7"
@@ -59,38 +59,43 @@ Download the appropriate binary for your platform from the [releases](https://gi
 
 1. Clone the repository:
 
-```bash
-git clone https://github.com/s0up4200/RedactedHook.git
-```
+    ```bash
+    git clone https://github.com/s0up4200/RedactedHook.git
+    ```
 
 2. Navigate to the project directory:
 
-```bash
-cd RedactedHook
-```
+    ```bash
+    cd RedactedHook
+    ```
+
 3. Build the project:
 
-```go
-go build
-```
-or
-```shell
-make build
-```
+    ```go
+    go build
+    ```
+
+    or
+
+    ```shell
+    make build
+    ```
 
 4. Run the compiled binary:
 
-```bash
-./bin/RedactedHook
-```
+    ```bash
+    ./bin/RedactedHook
+    ```
 
 ## Usage
 
 To use RedactedHook, send POST requests to the following endpoint:
 
-    Endpoint: http://127.0.0.1:42135/hook
-    Method: POST
-    Expected HTTP Status: 200
+```console
+Endpoint: <http://127.0.0.1:42135/hook>
+Method: POST
+Expected HTTP Status: 200
+```
 
 You can check ratio, uploader, size and, record label in a single request or separately.
 
@@ -149,6 +154,7 @@ You can check ratio, uploader, size and, record label in a single request or sep
   "record_labels": "LABEL1,LABEL2,LABEL3"
 }
 ```
+
 `indexer` - `"{{ .Indexer | js }}"` this is the indexer that pushed the release within autobrr.
 
 `torrent_id` - `{{.TorrentID}}` this is the TorrentID of the pushed release within autobrr.
@@ -173,11 +179,12 @@ You can check ratio, uploader, size and, record label in a single request or sep
 
 `mode` is either blacklist or whitelist. If blacklist is used, the torrent will be stopped if the uploader is found in the list. If whitelist is used, the torrent will be stopped if the uploader is not found in the list.
 
-#### curl commands for easy testing
+### curl commands for easy testing
 
 ```bash
 curl -X POST -H "Content-Type: application/json" -d '{"indexer": "redacted", "red_user_id": 3855, "red_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "ops_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "minratio": 1.0}' http://127.0.0.1:42135/hook
 ```
+
 ```bash
 curl -X POST -H "Content-Type: application/json" -d '{"indexer": "redacted", "torrent_id": 3931392, "red_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "ops_apikey": "e1be0c8f.6a1d6f89de6e9f6a61e6edcbb6a3a32d", "mode": "blacklist", "uploaders": "blacklisted_user1,blacklisted_user2,blacklisted_user3"}' http://127.0.0.1:42135/hook
 ```

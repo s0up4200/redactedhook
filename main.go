@@ -7,6 +7,9 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/s0up4200/redactedhook/internal/api"
+	"github.com/s0up4200/redactedhook/internal/config"
 )
 
 var (
@@ -22,9 +25,9 @@ func main() {
 	flag.StringVar(&configPath, "config", "", "Path to the configuration file")
 	flag.Parse()
 
-	initConfig(configPath)
+	config.InitConfig(configPath)
 
-	http.HandleFunc(Pathhook, hookData)
+	http.HandleFunc(api.Pathhook, api.HookData)
 
 	address := os.Getenv("SERVER_ADDRESS")
 	if address == "" {
