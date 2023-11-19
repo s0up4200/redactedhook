@@ -41,7 +41,8 @@ func main() {
 		if apiKey == "" {
 			log.Fatal().Msg("Failed to generate API key")
 		}
-		fmt.Println("Generated API Key:", apiKey)
+		// codeql-ignore-next-line: go/clear-text-logging-of-sensitive-information
+		fmt.Fprintf(os.Stdout, "API Token: %v, copy and paste into your config.toml", apiKey)
 		return
 	}
 
