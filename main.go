@@ -48,7 +48,7 @@ func main() {
 
 	config.InitConfig(configPath)
 
-	http.HandleFunc(api.Pathhook, api.HookData)
+	http.HandleFunc(api.Pathhook, api.WebhookHandler)
 
 	address := os.Getenv("SERVER_ADDRESS")
 	if address == "" {

@@ -12,22 +12,22 @@ func TestValidateRequestData(t *testing.T) {
 		errMsg  string
 	}{
 		// Valid request
-		{"Valid request", RequestData{Indexer: "ops", TorrentID: 123, REDKey: "12345678901234567890123456789012", OPSKey: "12345678901234567890123456789012", MinRatio: 1.0, MinSize: 0, MaxSize: 10, Uploaders: "uploader1", RecordLabel: "label1", Mode: "blacklist"}, false, ""},
+		{"Valid request", RequestData{Indexer: "ops", TorrentID: 123, REDKey: "123456789012345678901234567890123456789012", OPSKey: "123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012", MinRatio: 1.0, MinSize: 0, MaxSize: 10, Uploaders: "uploader1", RecordLabel: "label1", Mode: "blacklist"}, false, ""},
 
 		// Invalid indexer
 		{"Invalid indexer", RequestData{Indexer: "invalid"}, true, "invalid indexer: invalid"},
 
 		// Invalid torrent ID
-		{"Invalid torrent ID", RequestData{Indexer: "ops", TorrentID: -1}, true, "invalid torrent ID: -1"},
+		{"Invalid torrent ID", RequestData{Indexer: "ops", TorrentID: 1000000000}, true, "invalid torrent ID: 1000000000"},
 
-		// REDKey too short
-		{"REDKey too short", RequestData{Indexer: "ops", REDKey: "short"}, true, "REDKey is too short"},
+		// REDKey too long
+		{"REDKey too long", RequestData{Indexer: "redacted", REDKey: "12345678901234567890212345678901234567890123"}, true, "REDKey is too long"},
 
-		// OPSKey too short
-		{"OPSKey too short", RequestData{Indexer: "ops", OPSKey: "short"}, true, "OPSKey is too short"},
+		// OPSKey too long
+		{"OPSKey too long", RequestData{Indexer: "ops", OPSKey: "123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012109213091823098123091283"}, true, "OPSKey is too long"},
 
-		// MinRatio negative
-		{"MinRatio negative", RequestData{Indexer: "ops", MinRatio: -1}, true, "minratio cannot be negative"},
+		// MinRatio out of range
+		{"MinRatio out of range", RequestData{Indexer: "ops", MinRatio: 1000}, true, "minRatio must be between 0 and 999.999"},
 
 		// MinSize greater than MaxSize
 		{"MinSize greater than MaxSize", RequestData{Indexer: "ops", MinSize: 11, MaxSize: 10}, true, "minsize cannot be greater than maxsize"},
@@ -36,10 +36,10 @@ func TestValidateRequestData(t *testing.T) {
 		{"Invalid Uploaders", RequestData{Indexer: "ops", Uploaders: "uploader#1"}, true, "uploaders field should only contain alphanumeric characters"},
 
 		// Invalid RecordLabel
-		{"Invalid RecordLabel", RequestData{Indexer: "ops", RecordLabel: "label#1"}, true, "record_labels field should only contain alphanumeric characters"},
+		{"Invalid RecordLabel", RequestData{Indexer: "ops", RecordLabel: "label#1"}, true, "recordLabels field should only contain alphanumeric characters, spaces, and safe special characters"},
 
-		// Invalid Mode
-		{"Invalid Mode", RequestData{Indexer: "ops", Mode: "invalid_mode"}, true, "invalid mode: invalid_mode"},
+		// Invalid Mode with Uploaders
+		{"Invalid Mode with Uploaders", RequestData{Indexer: "ops", Uploaders: "uploader1", Mode: "invalid_mode"}, true, "mode must be either 'whitelist' or 'blacklist', got 'invalid_mode'"},
 	}
 
 	for _, tt := range tests {
