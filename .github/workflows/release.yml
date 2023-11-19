@@ -6,7 +6,7 @@ on:
       - "main"
       - "develop"
     tags:
-      - 'v*'
+      - "v*"
   pull_request:
 
 permissions:
@@ -24,11 +24,11 @@ jobs:
         with:
           fetch-depth: 0
 
-#     1.20 is the last version to support Windows < 10, Server < 2016, and MacOS < 1.15.
+      #     1.20 is the last version to support Windows < 10, Server < 2016, and MacOS < 1.15.
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.20.1'
+          go-version: "1.20.1"
           cache: true
 
       - name: Run GoReleaser build
@@ -56,12 +56,15 @@ jobs:
         with:
           fetch-depth: 0
 
-#     1.20 is the last version to support Windows < 10, Server < 2016, and MacOS < 1.15.
+      #     1.20 is the last version to support Windows < 10, Server < 2016, and MacOS < 1.15.
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.20.1'
+          go-version: "1.20.1"
           cache: true
+
+      - name: Run tests
+        run: go test ./...
 
       - name: Run GoReleaser build and publish tags
         uses: goreleaser/goreleaser-action@v3
