@@ -22,10 +22,12 @@ func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string,
 		log.Warn().Msgf("%s: Too many requests", indexer)
 		return fmt.Errorf("too many requests")
 	}
+	//log.Info().Msgf("%s: Rate limiter used", indexer) // Log the rate limiter usage
 
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
 		log.Error().Msgf("fetchAPI error: %v", err)
+		return err
 	}
 	req.Header.Set("Authorization", apiKey)
 
@@ -35,16 +37,19 @@ func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string,
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Error().Msgf("fetchAPI error: %v", err)
+		return err
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Error().Msgf("fetchAPI error: %v", err)
+		return err
 	}
 
 	if err := json.Unmarshal(respBody, target); err != nil {
 		log.Error().Msgf("fetchAPI error: %v", err)
+		return err
 	}
 
 	responseData := target.(*ResponseData)

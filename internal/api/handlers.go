@@ -44,9 +44,10 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	// Read and validate JSON payload
 	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
 		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
-		log.Warn().Msgf("Invalid JSON payload: %v", err)
+		log.Warn().Err(err).Msg("Invalid JSON payload")
 		return
 	}
+
 	defer r.Body.Close()
 
 	if requestData.Indexer != "ops" && requestData.Indexer != "redacted" {
