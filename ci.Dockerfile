@@ -26,7 +26,7 @@ RUN --mount=target=. \
     REVISION=$(git rev-parse --short HEAD) \
     GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.buildDate=${BUILDTIME}" \
-    -o /out/bin/redactedhook .
+    -o /out/bin/redactedhook cmd/redactedhook/main.go
 
 # build runner
 FROM alpine:latest

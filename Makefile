@@ -25,7 +25,7 @@ test:
 build: deps build/app
 
 build/app:
-	go build -ldflags $(GOFLAGS) -o bin/$(SERVICE) .
+	go build -ldflags $(GOFLAGS) -o bin/$(SERVICE) ./cmd/redactedhook/main.go
 
 build/docker:
 	docker build -t redactedhook:dev -f Dockerfile . --build-arg GIT_TAG=$(GIT_TAG) --build-arg GIT_COMMIT=$(GIT_COMMIT)
