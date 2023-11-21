@@ -17,12 +17,19 @@ const (
 	APIEndpointBaseOrpheus  = "https://orpheus.network/ajax.php"
 )
 
+type CacheItem struct {
+	Data        *ResponseData
+	LastFetched time.Time
+}
+
+var cache = make(map[string]CacheItem) // Keyed by indexer
+
 func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string, target interface{}) error {
 	if !limiter.Allow() {
 		log.Warn().Msgf("%s: Too many requests", indexer)
 		return fmt.Errorf("too many requests")
 	}
-	//log.Info().Msgf("%s: Rate limiter used", indexer) // Log the rate limiter usage
+	log.Info().Msgf("[%s]: Rate limiter used", indexer) // Log the rate limiter usage
 
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
@@ -89,6 +96,14 @@ func fetchResponseData(requestData *RequestData, data **ResponseData, id int, ac
 		return nil
 	}
 
+	cacheKey := fmt.Sprintf("%s_%d_%s", requestData.Indexer, id, action)
+
+	// Check cache
+	if cached, ok := cache[cacheKey]; ok && time.Since(cached.LastFetched) < 5*time.Minute {
+		*data = cached.Data
+		return nil
+	}
+
 	var apiKey string
 	switch requestData.Indexer {
 	case "redacted":
@@ -103,6 +118,12 @@ func fetchResponseData(requestData *RequestData, data **ResponseData, id int, ac
 	*data, err = initiateAPIRequest(id, action, apiKey, apiBase, requestData.Indexer)
 	if err != nil {
 		return fmt.Errorf("error fetching %s data: %w", action, err)
+	}
+
+	// Cache the response data
+	cache[cacheKey] = CacheItem{
+		Data:        *data,
+		LastFetched: time.Now(),
 	}
 	return nil
 }
