@@ -21,6 +21,10 @@ var (
 	buildDate string
 )
 
+const (
+	path = "/hook"
+)
+
 func GenerateAPIToken(length int) string {
 	b := make([]byte, length)
 	if _, err := rand.Read(b); err != nil {
@@ -48,7 +52,7 @@ func main() {
 
 	config.InitConfig(configPath)
 
-	http.HandleFunc(api.Pathhook, api.WebhookHandler)
+	http.HandleFunc(path, api.WebhookHandler)
 
 	address := os.Getenv("SERVER_ADDRESS")
 	if address == "" {

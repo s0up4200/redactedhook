@@ -29,7 +29,7 @@ func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string,
 		log.Warn().Msgf("%s: Too many requests", indexer)
 		return fmt.Errorf("too many requests")
 	}
-	log.Info().Msgf("[%s]: Rate limiter used", indexer) // Log the rate limiter usage
+	log.Trace().Msgf("[%s] Rate limiter used: %s", indexer, endpoint)
 
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {

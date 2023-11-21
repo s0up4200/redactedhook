@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	Pathhook                 = "/hook"
 	StatusUploaderNotAllowed = http.StatusIMUsed + 1
 	StatusLabelNotAllowed    = http.StatusIMUsed + 2
 	StatusSizeNotAllowed     = http.StatusIMUsed + 3
