@@ -8,10 +8,11 @@ import (
 	"github.com/inhies/go-bytesize"
 	"github.com/rs/zerolog/log"
 	"github.com/s0up4200/redactedhook/internal/config"
+	"github.com/spf13/viper"
 )
 
 func validateRequestData(requestData *RequestData) error {
-	alphanumericRegex := regexp.MustCompile(`^[a-zA-Z0-9]+$`)
+	uploadersRegex := regexp.MustCompile(`^[a-zA-Z0-9, ]+$`)
 	safeCharacterRegex := regexp.MustCompile(`^[\w\s&,-]+$`)
 
 	if requestData.Indexer != "ops" && requestData.Indexer != "redacted" {
@@ -51,7 +52,7 @@ func validateRequestData(requestData *RequestData) error {
 	}
 
 	if requestData.Uploaders != "" {
-		if !alphanumericRegex.MatchString(requestData.Uploaders) {
+		if !uploadersRegex.MatchString(requestData.Uploaders) {
 			errMsg := "uploaders field should only contain alphanumeric characters"
 			log.Debug().Msg(errMsg)
 			return fmt.Errorf(errMsg)
@@ -80,6 +81,25 @@ func validateRequestData(requestData *RequestData) error {
 }
 
 func fallbackToConfig(requestData *RequestData, cfg *config.Config) {
+
+	needsConfig := requestData.REDUserID == 0 ||
+		requestData.OPSUserID == 0 ||
+		requestData.REDKey == "" ||
+		requestData.OPSKey == "" ||
+		requestData.MinRatio == 0 ||
+		requestData.MinSize == 0 ||
+		requestData.MaxSize == 0 ||
+		requestData.Uploaders == "" ||
+		requestData.Mode == "" ||
+		requestData.RecordLabel == ""
+
+	if needsConfig {
+		if err := viper.Unmarshal(&cfg); err != nil {
+			log.Error().Err(err).Msg("Unable to decode into struct")
+			return
+		}
+	}
+
 	if requestData.REDUserID == 0 {
 		requestData.REDUserID = cfg.UserIDs.REDUserID
 	}
