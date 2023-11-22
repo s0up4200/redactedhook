@@ -76,11 +76,6 @@ func validateRequestData(requestData *RequestData) error {
 		}
 	}
 
-	// Validate TorrentName if provided
-	//if requestData.TorrentName != "" {
-	//	// Add specific checks if necessary, e.g., format, character restrictions
-	//}
-
 	return nil
 }
 

@@ -15,7 +15,6 @@ type RequestData struct {
 	RecordLabel string            `json:"record_labels,omitempty"`
 	Mode        string            `json:"mode,omitempty"`
 	Indexer     string            `json:"indexer"`
-	TorrentName string            `json:"torrentname,omitempty"`
 }
 
 type ResponseData struct {

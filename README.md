@@ -119,7 +119,7 @@ Set it in the config, and use it as a header like:
 curl -X PUT \
      -H "X-API-Token: s3cr3tt0k3n" \
      -H "Content-Type: application/json" \
-     -d '{ "torrent_id": {{.TorrentID}}, "indexer": "{{ .Indexer | js }}", "torrentname": "{{ .TorrentName | js }}"} \
+     -d '{ "torrent_id": {{.TorrentID}}, "indexer": "{{ .Indexer | js }}"} \
      http://127.0.0.1:42135/hook
 ```
 
@@ -174,7 +174,6 @@ compress = false                 # Whether to compress old log files
 {
     "torrent_id": {{.TorrentID}},
     "indexer": "{{ .Indexer | js }}",
-    "torrentname": "{{ .TorrentName | js }}",
 }
 ```
 
@@ -183,8 +182,6 @@ Everything else can be set in the `config.toml`, but you can set them in the web
 `indexer` - `"{{ .Indexer | js }}"` this is the indexer that pushed the release within autobrr.
 
 `torrent_id` - `{{.TorrentID}}` this is the TorrentID of the pushed release within autobrr.
-
-`torrentname` **(optional)** - `"{{ .TorrentName | js }}"` - For logging purposes only.
 
 `red_user_id` is the number in the URL when you visit your profile.
 
