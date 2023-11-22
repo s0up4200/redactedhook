@@ -37,11 +37,11 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05", NoColor: false})
 	var configPath string
 
-	flag.StringVar(&configPath, "config", "", "Path to the configuration file")
+	flag.StringVar(&configPath, "config", "config.toml", "Path to the configuration file")
 	flag.Parse()
 
-	if len(os.Args) > 1 {
-		switch os.Args[1] {
+	if len(flag.Args()) > 0 {
+		switch flag.Arg(0) {
 		case "generate-apitoken":
 			apiKey := GenerateAPIToken(16)
 			if apiKey == "" {
