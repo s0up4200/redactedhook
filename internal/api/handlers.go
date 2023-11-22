@@ -134,14 +134,8 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 		recordLabel := strings.ToLower(strings.TrimSpace(torrentData.Response.Torrent.RecordLabel))
 		name := torrentData.Response.Group.Name
-		//releaseName := torrentData.Response.Torrent.ReleaseName
-		requestedRecordLabels := strings.Split(requestData.RecordLabel, ",")
-		originalRequestedLabels := make([]string, len(requestedRecordLabels)) // Store original labels for logging
 
-		for i, label := range requestedRecordLabels {
-			originalRequestedLabels[i] = label                                   // Keep the original label for logging
-			requestedRecordLabels[i] = strings.ToLower(strings.TrimSpace(label)) // Normalize for comparison
-		}
+		requestedRecordLabels := normalizeLabels(strings.Split(requestData.RecordLabel, ","))
 
 		if recordLabel == "" {
 			log.Debug().Msgf("[%s] No record label found for release: %s", requestData.Indexer, name)
@@ -149,20 +143,13 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Use the original labels for logging
-		recordlabelsStr := strings.Trim(fmt.Sprint(originalRequestedLabels), "[]")
-		log.Trace().Msgf("[%s] Requested record labels: %v", requestData.Indexer, recordlabelsStr)
+		recordLabelsStr := strings.Join(requestedRecordLabels, ", ")
+		log.Trace().Msgf("[%s] Requested record labels: [%s]", requestData.Indexer, recordLabelsStr)
 
-		isRecordLabelPresent := false
-		for _, rLabel := range requestedRecordLabels {
-			if rLabel == recordLabel {
-				isRecordLabelPresent = true
-				break
-			}
-		}
+		isRecordLabelPresent := contains(requestedRecordLabels, recordLabel)
 
 		if !isRecordLabelPresent {
-			log.Debug().Msgf("[%s] The record label '%s' is not included in the requested record labels: %v", requestData.Indexer, recordLabel, requestedRecordLabels)
+			log.Debug().Msgf("[%s] The record label '%s' is not included in the requested record labels: [%s]", requestData.Indexer, recordLabel, recordLabelsStr)
 			http.Error(w, "Record label not allowed", StatusLabelNotAllowed)
 			return
 		}

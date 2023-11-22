@@ -111,3 +111,20 @@ func fallbackToConfig(requestData *RequestData, cfg *config.Config) {
 		requestData.RecordLabel = cfg.RecordLabels.RecordLabels
 	}
 }
+
+func normalizeLabels(labels []string) []string {
+	normalized := make([]string, len(labels))
+	for i, label := range labels {
+		normalized[i] = strings.ToLower(strings.TrimSpace(label))
+	}
+	return normalized
+}
+
+func contains(slice []string, val string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
