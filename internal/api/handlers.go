@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"strings"
 
@@ -25,6 +26,8 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	var requestData RequestData
 
 	cfg := config.GetConfig()
+	// Check each field in requestData and fallback to config if empty
+	fallbackToConfig(&requestData)
 
 	// Check for API key in the request header
 	apiKeyHeader := r.Header.Get("X-API-Token")
@@ -59,9 +62,6 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	// Check each field in requestData and fallback to config if empty
-	fallbackToConfig(&requestData, cfg)
 
 	// Validate requestData fields
 	if err := validateRequestData(&requestData); err != nil {
@@ -132,7 +132,7 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		recordLabel := strings.ToLower(strings.TrimSpace(torrentData.Response.Torrent.RecordLabel))
+		recordLabel := strings.ToLower(strings.TrimSpace(html.UnescapeString(torrentData.Response.Torrent.RecordLabel)))
 		name := torrentData.Response.Group.Name
 
 		requestedRecordLabels := normalizeLabels(strings.Split(requestData.RecordLabel, ","))

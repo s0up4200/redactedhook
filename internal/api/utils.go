@@ -13,7 +13,7 @@ import (
 
 func validateRequestData(requestData *RequestData) error {
 	uploadersRegex := regexp.MustCompile(`^[a-zA-Z0-9, ]+$`)
-	safeCharacterRegex := regexp.MustCompile(`^[\w\s&,-]+$`)
+	safeCharacterRegex := regexp.MustCompile(`^[\p{L}\p{N}\s&,-]+$`)
 
 	if requestData.Indexer != "ops" && requestData.Indexer != "redacted" {
 		errMsg := fmt.Sprintf("invalid indexer: %s", requestData.Indexer)
@@ -80,7 +80,9 @@ func validateRequestData(requestData *RequestData) error {
 	return nil
 }
 
-func fallbackToConfig(requestData *RequestData, cfg *config.Config) {
+func fallbackToConfig(requestData *RequestData) {
+
+	cfg := config.Config{}
 
 	needsConfig := requestData.REDUserID == 0 ||
 		requestData.OPSUserID == 0 ||
