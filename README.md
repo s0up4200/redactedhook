@@ -170,7 +170,7 @@ Set it in the config, and use it as a header like:
 `CURL` if you want to test:
 
 ```bash
-curl -X PUT \
+curl -X POST \
      -H "X-API-Token: s3cr3tt0k3n" \
      -H "Content-Type: application/json" \
      -d '{ "torrent_id": {{.TorrentID}}, "indexer": "{{ .Indexer | js }}"} \
