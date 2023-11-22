@@ -102,6 +102,7 @@ func fetchResponseData(requestData *RequestData, data **ResponseData, id int, ac
 	// Check cache
 	if cached, ok := cache[cacheKey]; ok && time.Since(cached.LastFetched) < 5*time.Minute {
 		*data = cached.Data
+		log.Trace().Msgf("[%s] Using cached %s data for TorrentID: %d", requestData.Indexer, action, id)
 		return nil
 	}
 
@@ -122,9 +123,11 @@ func fetchResponseData(requestData *RequestData, data **ResponseData, id int, ac
 	}
 
 	// Cache the response data
-	cache[cacheKey] = CacheItem{
-		Data:        *data,
-		LastFetched: time.Now(),
+	if action == "user" {
+		cache[cacheKey] = CacheItem{
+			Data:        *data,
+			LastFetched: time.Now(),
+		}
 	}
 	return nil
 }
