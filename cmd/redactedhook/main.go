@@ -40,14 +40,28 @@ func main() {
 	flag.StringVar(&configPath, "config", "", "Path to the configuration file")
 	flag.Parse()
 
-	if len(os.Args) > 1 && os.Args[1] == "generate-apitoken" {
-		apiKey := GenerateAPIToken(16)
-		if apiKey == "" {
-			log.Fatal().Msg("Failed to generate API key")
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "generate-apitoken":
+			apiKey := GenerateAPIToken(16)
+			if apiKey == "" {
+				log.Fatal().Msg("Failed to generate API key")
+			}
+			// codeql-ignore-next-line: go/clear-text-logging-of-sensitive-information
+			fmt.Fprintf(os.Stdout, "API Token: %v, copy and paste into your config.toml\n", apiKey)
+			return
+		case "create-config":
+			configBytes := config.CreateConfig()
+			err := os.WriteFile("config.toml", configBytes, 0644)
+			if err != nil {
+				log.Fatal().Err(err).Msg("Failed to write default configuration file")
+			}
+			fmt.Println("Configuration file 'config.toml' generated.")
+			return
+		default:
+			log.Fatal().Msgf("Unknown command: %s", os.Args[1])
+			return
 		}
-		// codeql-ignore-next-line: go/clear-text-logging-of-sensitive-information
-		fmt.Fprintf(os.Stdout, "API Token: %v, copy and paste into your config.toml", apiKey)
-		return
 	}
 
 	config.InitConfig(configPath)

@@ -2,6 +2,21 @@
 
 RedactedHook is a webhook companion service for [autobrr](https://github.com/autobrr/autobrr) designed to check the names of uploaders, your ratio, and record labels associated with torrents on **Redacted** and **Orpheus**. It provides a simple and efficient way to validate if uploaders are blacklisted or whitelisted, to stop racing in case your ratio falls below a certain point, and to verify if a torrent's record label matches against a specified list.
 
+## Table of Contents
+
+- [Features](#features)
+- [Getting Started](#getting-started)
+  - [Warning](#warning)
+  - [Installation](#installation)
+    - [Docker](#docker)
+    - [Docker Compose](#docker-compose)
+    - [Using precompiled binaries](#using-precompiled-binaries)
+    - [Building from source](#building-from-source)
+- [Usage](#usage)
+  - [Config](#config)
+  - [Authorization](#authorization)
+  - [Payload](#payload)
+
 ## Features
 
 - Verify if an uploader's name is on a provided whitelist or blacklist.
@@ -18,15 +33,10 @@ It was made with [autobrr](https://github.com/autobrr/autobrr) in mind.
 
 ### Warning
 
-Remember that autobrr also checks the RED/OPS API if you have min/max sizes set. This will result in you hitting the API 2x.
-So for your own good, don't set size checks in your autobrr filter is you use RedactedHook.
-
-### Prerequisites
-
-To run RedactedHook, you'll need:
-
-1. Go 1.20 or later installed **(if building from source)**
-2. Access to Redacted
+> \[!IMPORTANT]
+>
+> Remember that autobrr also checks the RED/OPS API if you have min/max sizes set. This will result in you hitting the API 2x.
+> So for your own good, don't set size checks in your autobrr filter is you use RedactedHook.
 
 ### Installation
 
@@ -89,7 +99,7 @@ Download the appropriate binary for your platform from the [releases](https://gi
 4. Run the compiled binary:
 
     ```bash
-    ./bin/RedactedHook --config /path/to/config.toml
+    ./bin/RedactedHook --config /path/to/config.toml # config flag not necessary if file is next to binary
     ```
 
 ## Usage
@@ -105,33 +115,17 @@ Expected HTTP Status: 200
 
 You can check ratio, uploader (whitelist and blacklist), minsize, maxsize, and record labels in a single request, or separately.
 
-### Authorization
-
-API Token can be generated like this: `redactedhook generate-apitoken`
-
-Set it in the config, and use it as a header like:
-
-![autobrr-external-filter-example](<.github/images/autobrr-external-filters.png>)
-
-`CURL` if you want to test:
-
-```bash
-curl -X PUT \
-     -H "X-API-Token: s3cr3tt0k3n" \
-     -H "Content-Type: application/json" \
-     -d '{ "torrent_id": {{.TorrentID}}, "indexer": "{{ .Indexer | js }}"} \
-     http://127.0.0.1:42135/hook
-```
-
 ### Config
 
-Most of `requestData` can be set in `config.toml` to reduce the payload from autobrr. Config template can be found [here](./config.toml).
+Most of `requestData` can be set in `config.toml` to reduce the payload from autobrr.
+
+Config can be created with: `redactedhook create-config`
 
 ```toml
 [authorization]
 api_token = "" # generate with "redactedhook generate-apitoken"
 # the api_token needs to be set as a header for the webhook to work
-# eg. Header: X-API-TOKEN: asd987gsd98g7324kjh142kjh
+# eg. Header=X-API-Token asd987gsd98g7324kjh142kjh
 
 [indexer_keys]
 #red_apikey = "" # generate in user settings, needs torrent and user privileges
@@ -158,12 +152,29 @@ api_token = "" # generate with "redactedhook generate-apitoken"
 [logs]
 loglevel = "trace"               # trace, debug, info
 logtofile = false                # Set to true to enable logging to a file
-logfilepath = "/redactedhook/redactedhook.log" # Path to the log file
+logfilepath = "redactedhook.log" # Path to the log file
 maxsize = 10                     # Max file size in MB
 maxbackups = 3                   # Max number of old log files to keep
 maxage = 28                      # Max age in days to keep a log file
 compress = false                 # Whether to compress old log files
+```
 
+### Authorization
+
+API Token can be generated like this: `redactedhook generate-apitoken`
+
+Set it in the config, and use it as a header like:
+
+![autobrr-external-filter-example](<.github/images/autobrr-external-filters.png>)
+
+`CURL` if you want to test:
+
+```bash
+curl -X PUT \
+     -H "X-API-Token: s3cr3tt0k3n" \
+     -H "Content-Type: application/json" \
+     -d '{ "torrent_id": {{.TorrentID}}, "indexer": "{{ .Indexer | js }}"} \
+     http://127.0.0.1:42135/hook
 ```
 
 ### Payload
