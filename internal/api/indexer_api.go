@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"time"
@@ -82,7 +83,7 @@ func initiateAPIRequest(id int, action string, apiKey, apiBase, indexer string) 
 
 	// Log the release information
 	if action == "torrent" && responseData.Response.Torrent != nil {
-		releaseName := responseData.Response.Torrent.ReleaseName
+		releaseName := html.UnescapeString(responseData.Response.Torrent.ReleaseName)
 		uploader := responseData.Response.Torrent.Username
 		log.Debug().Msgf("[%s] Checking release: %s - (Uploader: %s) (TorrentID: %d)", indexer, releaseName, uploader, id)
 	}
