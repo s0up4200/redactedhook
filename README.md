@@ -208,6 +208,6 @@ Everything else can be set in the `config.toml`, but you can set them in the web
 
 `maxsize` is the max allowed size you want to grab. Eg. `500MB`
 
-`uploaders` **(CASE SENSITIVE)** is a comma-separated list of uploaders to check against.
+`uploaders` is a comma-separated list of uploaders to check against.
 
 `mode` is either blacklist or whitelist. If blacklist is used, the torrent will be stopped if the uploader is found in the list. If whitelist is used, the torrent will be stopped if the uploader is not found in the list.
