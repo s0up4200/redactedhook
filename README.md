@@ -33,10 +33,10 @@ It was made with [autobrr](https://github.com/autobrr/autobrr) in mind.
 
 ### Warning
 
-> \[!IMPORTANT]
+> \[!DANGER]
 >
 > Remember that autobrr also checks the RED/OPS API if you have min/max sizes set. This will result in you hitting the API 2x.
-> So for your own good, don't set size checks in your autobrr filter is you use RedactedHook.
+> So for your own good, **only** set size checks in RedactedHook.
 
 ### Installation
 
