@@ -20,9 +20,6 @@ const (
 )
 
 func WebhookHandler(w http.ResponseWriter, r *http.Request) {
-
-	var torrentData *ResponseData
-	var userData *ResponseData
 	var requestData RequestData
 
 	cfg := config.GetConfig()
@@ -96,7 +93,8 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	// hook uploader
 	if requestData.TorrentID != 0 && requestData.Uploaders != "" {
-		if err := fetchResponseData(&requestData, &torrentData, requestData.TorrentID, "torrent", apiBase); err != nil {
+		torrentData, err := fetchResponseData(&requestData, requestData.TorrentID, "torrent", apiBase)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -104,8 +102,8 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		username := torrentData.Response.Torrent.Username
 		usernames := strings.Split(requestData.Uploaders, ",")
 
-		for i, username := range usernames { // Trim whitespace from each username
-			usernames[i] = strings.TrimSpace(username)
+		for i, uname := range usernames { // Trim whitespace from each username
+			usernames[i] = strings.TrimSpace(uname)
 		}
 		usernamesStr := strings.Join(usernames, ", ") // Join the usernames with a comma and a single space
 		log.Trace().Msgf("[%s] Requested uploaders [%s]: %s", requestData.Indexer, requestData.Mode, usernamesStr)
@@ -127,7 +125,8 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	// hook record label
 	if requestData.TorrentID != 0 && requestData.RecordLabel != "" {
-		if err := fetchResponseData(&requestData, &torrentData, requestData.TorrentID, "torrent", apiBase); err != nil {
+		torrentData, err := fetchResponseData(&requestData, requestData.TorrentID, "torrent", apiBase)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -157,7 +156,8 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	// hook size
 	if requestData.TorrentID != 0 && (requestData.MinSize != 0 || requestData.MaxSize != 0) {
-		if err := fetchResponseData(&requestData, &torrentData, requestData.TorrentID, "torrent", apiBase); err != nil {
+		torrentData, err := fetchResponseData(&requestData, requestData.TorrentID, "torrent", apiBase)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -183,7 +183,8 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		if requestData.Indexer == "ops" {
 			userID = requestData.OPSUserID
 		}
-		if err := fetchResponseData(&requestData, &userData, userID, "user", apiBase); err != nil {
+		userData, err := fetchResponseData(&requestData, userID, "user", apiBase)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

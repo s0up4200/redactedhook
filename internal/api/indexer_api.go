@@ -18,30 +18,24 @@ const (
 	APIEndpointBaseOrpheus  = "https://orpheus.network/ajax.php"
 )
 
-type CacheItem struct {
-	Data        *ResponseData
-	LastFetched time.Time
-}
-
-var cache = make(map[string]CacheItem) // Keyed by indexer
-
 func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string, target interface{}) error {
 	if !limiter.Allow() {
 		log.Warn().Msgf("%s: Too many requests", indexer)
 		return fmt.Errorf("too many requests")
 	}
-	//log.Trace().Msgf("[%s] Rate limiter used: %s", indexer, endpoint)
 
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
-		log.Error().Msgf("fetchAPI error: %v", err)
-		return err
+		wrappedErr := fmt.Errorf("error making HTTP request to %s: %w", endpoint, err)
+		log.Error().Err(wrappedErr).Msg("fetchAPI error")
+		return wrappedErr
 	}
 	req.Header.Set("Authorization", apiKey)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	req = req.WithContext(ctx)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Error().Msgf("fetchAPI error: %v", err)
@@ -60,7 +54,12 @@ func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string,
 		return err
 	}
 
-	responseData := target.(*ResponseData)
+	responseData, ok := target.(*ResponseData)
+	if !ok {
+		log.Error().Msg("Invalid target type for JSON unmarshalling")
+		return fmt.Errorf("invalid target type")
+	}
+
 	if responseData.Status != "success" {
 		log.Warn().Msgf("API error from %s: %s", indexer, responseData.Error)
 		return fmt.Errorf("API error from %s: %s", indexer, responseData.Error)
@@ -78,7 +77,9 @@ func initiateAPIRequest(id int, action string, apiKey, apiBase, indexer string) 
 	endpoint := fmt.Sprintf("%s?action=%s&id=%d", apiBase, action, id)
 	responseData := &ResponseData{}
 	if err := makeRequest(endpoint, apiKey, limiter, indexer, responseData); err != nil {
-		return nil, err
+		wrappedErr := fmt.Errorf("initiateAPIRequest failed for endpoint %s: %w", endpoint, err)
+		log.Error().Err(wrappedErr).Msg("API request initiation error")
+		return nil, wrappedErr
 	}
 
 	// Log the release information
@@ -91,43 +92,29 @@ func initiateAPIRequest(id int, action string, apiKey, apiBase, indexer string) 
 	return responseData, nil
 }
 
-func fetchResponseData(requestData *RequestData, data **ResponseData, id int, action string, apiBase string) error {
-	// If data is already fetched, do nothing
-	if *data != nil {
-		return nil
+func fetchResponseData(requestData *RequestData, id int, action string, apiBase string) (*ResponseData, error) {
+	cacheKey := fmt.Sprintf("%d_%s", id, action)
+
+	// Check cache first
+	cachedData, found := checkCache(cacheKey, requestData.Indexer)
+	if found {
+		return cachedData, nil
 	}
 
-	cacheKey := fmt.Sprintf("%s_%d_%s", requestData.Indexer, id, action)
-
-	// Check cache
-	if cached, ok := cache[cacheKey]; ok && time.Since(cached.LastFetched) < 5*time.Minute {
-		*data = cached.Data
-		log.Trace().Msgf("[%s] Using cached %s data for TorrentID: %d", requestData.Indexer, action, id)
-		return nil
-	}
-
-	var apiKey string
-	switch requestData.Indexer {
-	case "redacted":
-		apiKey = requestData.REDKey
-	case "ops":
-		apiKey = requestData.OPSKey
-	default:
-		return fmt.Errorf("invalid indexer: %s", requestData.Indexer)
-	}
-
-	var err error
-	*data, err = initiateAPIRequest(id, action, apiKey, apiBase, requestData.Indexer)
+	apiKey, err := getAPIKey(requestData)
 	if err != nil {
-		return fmt.Errorf("error fetching %s data: %w", action, err)
+		return nil, err
+	}
+
+	responseData, err := initiateAPIRequest(id, action, apiKey, apiBase, requestData.Indexer)
+	if err != nil {
+		wrappedErr := fmt.Errorf("error fetching %s data for ID %d: %w", action, id, err)
+		log.Error().Err(wrappedErr).Msg("Data fetching error")
+		return nil, wrappedErr
 	}
 
 	// Cache the response data
-	//if action == "user" {
-	cache[cacheKey] = CacheItem{
-		Data:        *data,
-		LastFetched: time.Now(),
-	}
-	//}
-	return nil
+	cacheResponseData(cacheKey, responseData)
+
+	return responseData, nil
 }
