@@ -20,7 +20,7 @@ func cacheResponseData(cacheKey string, responseData *ResponseData) {
 // and returns the cached data if it exists and is not expired.
 func checkCache(cacheKey string, indexer string) (*ResponseData, bool) {
 	if cached, ok := cache[cacheKey]; ok && time.Since(cached.LastFetched) < 5*time.Minute {
-		log.Trace().Msgf("[%s] Using cached data for key: %s", indexer, cacheKey)
+		log.Trace().Msgf("[%s] Using cached data for %s", indexer, cacheKey)
 		return cached.Data, true
 	}
 	return nil, false

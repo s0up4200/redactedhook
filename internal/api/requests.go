@@ -95,7 +95,7 @@ func initiateAPIRequest(id int, action string, apiKey, apiBase, indexer string) 
 func fetchResponseData(requestData *RequestData, id int, action string, apiBase string) (*ResponseData, error) {
 
 	// Check cache first
-	cacheKey := fmt.Sprintf("%d_%s", id, action)
+	cacheKey := fmt.Sprintf("%sID %d", action, id)
 	cachedData, found := checkCache(cacheKey, requestData.Indexer)
 	if found {
 		return cachedData, nil
