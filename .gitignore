@@ -1,3 +1,7 @@
 dist/
 bin/
 .vscode
+
+__debug_bin
+.RedactedHook
+.DS_Store

@@ -19,26 +19,26 @@ RUN go mod download
 # Copy rest of the source code
 COPY . ./
 
-RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o bin/redactedhook ./main.go
+RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o bin/redactedhook cmd/redactedhook/main.go
 
 # build runner
 FROM alpine:latest
 
 LABEL org.opencontainers.image.source = "https://github.com/s0up4200/redactedhook"
 
-ENV HOME="/config" \
-    XDG_CONFIG_HOME="/config" \
-    XDG_DATA_HOME="/config"
+ENV HOME="/redactedhook" \
+    XDG_CONFIG_HOME="/redactedhook" \
+    XDG_DATA_HOME="/redactedhook"
 
 # Install runtime dependencies
 RUN apk --no-cache add ca-certificates curl tzdata jq
 
-WORKDIR /app
+WORKDIR /redactedhook
 
-VOLUME /config
+VOLUME /redactedhook
 
 COPY --from=app-builder /src/bin/redactedhook /usr/local/bin/
 
 EXPOSE 42135
 
-ENTRYPOINT ["/usr/local/bin/redactedhook"]
+ENTRYPOINT ["/usr/local/bin/redactedhook", "--config", "config.toml"]

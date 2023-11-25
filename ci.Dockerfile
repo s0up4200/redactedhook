@@ -26,27 +26,27 @@ RUN --mount=target=. \
     REVISION=$(git rev-parse --short HEAD) \
     GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.buildDate=${BUILDTIME}" \
-    -o /out/bin/redactedhook .
+    -o /out/bin/redactedhook cmd/redactedhook/main.go
 
 # build runner
 FROM alpine:latest
 
 # Set metadata and environment variables
 LABEL org.opencontainers.image.source = "https://github.com/s0up4200/redactedhook"
-ENV HOME="/config" \
-    XDG_CONFIG_HOME="/config" \
-    XDG_DATA_HOME="/config"
+ENV HOME="/redactedhook" \
+    XDG_CONFIG_HOME="/redactedhook" \
+    XDG_DATA_HOME="/redactedhook"
 
 # Install runtime dependencies
 RUN apk --no-cache add ca-certificates curl tzdata jq
 
 # Set work directory and expose necessary ports
-WORKDIR /app
-VOLUME /config
-EXPOSE 7474
+WORKDIR /redactedhook
+VOLUME /redactedhook
+EXPOSE 42135
 
 # Set entrypoint
-ENTRYPOINT ["/usr/local/bin/redactedhook", "--config", "/config"]
+ENTRYPOINT ["/usr/local/bin/redactedhook", "--config", "config.toml"]
 
 # Copy binary from app-builder
 COPY --from=app-builder /out/bin/redactedhook /usr/local/bin/

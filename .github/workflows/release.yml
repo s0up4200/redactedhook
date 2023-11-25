@@ -6,7 +6,7 @@ on:
       - "main"
       - "develop"
     tags:
-      - 'v*'
+      - "v*"
   pull_request:
 
 permissions:
@@ -14,6 +14,24 @@ permissions:
   packages: write
 
 jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.20.6"
+          cache: true
+
+      - name: Test
+        run: go test -v ./...
+
   goreleaserbuild:
     name: Build Go binaries
     if: github.event_name == 'pull_request'
@@ -24,11 +42,11 @@ jobs:
         with:
           fetch-depth: 0
 
-#     1.20 is the last version to support Windows < 10, Server < 2016, and MacOS < 1.15.
+      #     1.20 is the last version to support Windows < 10, Server < 2016, and MacOS < 1.15.
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.20.1'
+          go-version: "1.20.1"
           cache: true
 
       - name: Run GoReleaser build
@@ -56,11 +74,11 @@ jobs:
         with:
           fetch-depth: 0
 
-#     1.20 is the last version to support Windows < 10, Server < 2016, and MacOS < 1.15.
+      #     1.20 is the last version to support Windows < 10, Server < 2016, and MacOS < 1.15.
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.20.1'
+          go-version: "1.20.1"
           cache: true
 
       - name: Run GoReleaser build and publish tags
