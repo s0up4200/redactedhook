@@ -123,11 +123,11 @@ func fetchResponseData(requestData *RequestData, data **ResponseData, id int, ac
 	}
 
 	// Cache the response data
-	if action == "user" {
-		cache[cacheKey] = CacheItem{
-			Data:        *data,
-			LastFetched: time.Now(),
-		}
+	//if action == "user" {
+	cache[cacheKey] = CacheItem{
+		Data:        *data,
+		LastFetched: time.Now(),
 	}
+	//}
 	return nil
 }

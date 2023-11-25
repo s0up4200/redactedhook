@@ -25,7 +25,7 @@ RedactedHook is a webhook companion service for [autobrr](https://github.com/aut
 - Check the torrentSize (Useful for not hitting the API from both autobrr and redactedhook)
 - Easy to integrate with other applications via webhook.
 - Rate-limited to comply with tracker API request policies.
-  - With a 5-minute data cache for userdata to reduce frequent API calls for the same data. Ratio does not update inside a 5 minute window anyway.
+  - With a 5-minute data cache to reduce frequent API calls for the same data.
 
 It was made with [autobrr](https://github.com/autobrr/autobrr) in mind.
 
