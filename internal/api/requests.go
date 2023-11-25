@@ -13,12 +13,9 @@ import (
 	"golang.org/x/time/rate"
 )
 
-const (
-	APIEndpointBaseRedacted = "https://redacted.ch/ajax.php"
-	APIEndpointBaseOrpheus  = "https://orpheus.network/ajax.php"
-)
-
+// sends an HTTP GET request to an endpoint with an API key, applies a rate limiter, and unmarshals the response JSON into a target object.
 func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string, target interface{}) error {
+
 	if !limiter.Allow() {
 		log.Warn().Msgf("%s: Too many requests", indexer)
 		return fmt.Errorf("too many requests")
@@ -68,7 +65,9 @@ func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string,
 	return nil
 }
 
+// initiates an API request with the given parameters and returns the response data or an error.
 func initiateAPIRequest(id int, action string, apiKey, apiBase, indexer string) (*ResponseData, error) {
+
 	limiter := getLimiter(indexer)
 	if limiter == nil {
 		return nil, fmt.Errorf("could not get rate limiter for indexer: %s", indexer)
@@ -92,10 +91,11 @@ func initiateAPIRequest(id int, action string, apiKey, apiBase, indexer string) 
 	return responseData, nil
 }
 
+// fetches response data from an API, checks the cache first, and caches the response data for future use.
 func fetchResponseData(requestData *RequestData, id int, action string, apiBase string) (*ResponseData, error) {
-	cacheKey := fmt.Sprintf("%d_%s", id, action)
 
 	// Check cache first
+	cacheKey := fmt.Sprintf("%d_%s", id, action)
 	cachedData, found := checkCache(cacheKey, requestData.Indexer)
 	if found {
 		return cachedData, nil
@@ -117,4 +117,16 @@ func fetchResponseData(requestData *RequestData, id int, action string, apiBase 
 	cacheResponseData(cacheKey, responseData)
 
 	return responseData, nil
+}
+
+// determines the API base endpoint based on the provided indexer.
+func determineAPIBase(indexer string) (string, error) {
+	switch indexer {
+	case "redacted":
+		return APIEndpointBaseRedacted, nil
+	case "ops":
+		return APIEndpointBaseOrpheus, nil
+	default:
+		return "", fmt.Errorf("invalid path")
+	}
 }

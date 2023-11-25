@@ -1,6 +1,15 @@
 package api
 
-import "github.com/inhies/go-bytesize"
+import (
+	"time"
+
+	"github.com/inhies/go-bytesize"
+)
+
+type CacheItem struct {
+	Data        *ResponseData
+	LastFetched time.Time
+}
 
 type RequestData struct {
 	REDUserID   int               `json:"red_user_id,omitempty"`

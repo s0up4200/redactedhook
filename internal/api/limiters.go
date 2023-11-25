@@ -17,6 +17,7 @@ func init() {
 	orpheusLimiter = rate.NewLimiter(rate.Every(10*time.Second), 5)
 }
 
+// returns a rate limiter based on the provided indexer string.
 func getLimiter(indexer string) *rate.Limiter {
 	switch indexer {
 	case "redacted":
