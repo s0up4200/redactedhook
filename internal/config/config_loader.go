@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
@@ -36,7 +37,7 @@ func readAndUnmarshalConfig() {
 		log.Error().Err(err).Msg("Unable to unmarshal config")
 	} else {
 		parseSizeCheck()
-		log.Debug().Msgf("Config file read successfully: %s", viper.ConfigFileUsed())
+		log.Debug().Msgf("Config file read: %s", viper.ConfigFileUsed())
 		configureLogger()
 	}
 }
@@ -147,4 +148,86 @@ func logConfigChanges(oldConfig, newConfig Config) {
 	if oldConfig.Logs.Compress != newConfig.Logs.Compress { // Logs
 		log.Debug().Msgf("Logs Compress changed from %t to %t", oldConfig.Logs.Compress, newConfig.Logs.Compress)
 	}
+}
+
+func ValidateConfig() error {
+	var validationErrors []string
+
+	if !viper.IsSet("authorization.api_token") || viper.GetString("authorization.api_token") == "" {
+		validationErrors = append(validationErrors, "Authorization API Token is required")
+	}
+
+	if viper.IsSet("indexer_keys.red_apikey") && viper.GetString("indexer_keys.red_apikey") == "" {
+		validationErrors = append(validationErrors, "Indexer REDKey should not be empty")
+	}
+
+	if viper.IsSet("indexer_keys.ops_apikey") && viper.GetString("indexer_keys.ops_apikey") == "" {
+		validationErrors = append(validationErrors, "Indexer OPSKey should not be empty")
+	}
+
+	if viper.IsSet("userid.red_user_id") && viper.GetInt("userid.red_user_id") <= 0 {
+		validationErrors = append(validationErrors, "Invalid RED User ID")
+	}
+
+	if viper.IsSet("userid.ops_user_id") && viper.GetInt("userid.ops_user_id") <= 0 {
+		validationErrors = append(validationErrors, "Invalid OPS User ID")
+	}
+
+	if viper.IsSet("ratio.minratio") && viper.GetFloat64("ratio.minratio") <= 0 {
+		validationErrors = append(validationErrors, "Minimum ratio should be positive")
+	}
+
+	if viper.IsSet("sizecheck.minsize") && viper.GetString("sizecheck.minsize") == "" {
+		validationErrors = append(validationErrors, "Invalid minimum size")
+	}
+
+	if viper.IsSet("sizecheck.maxsize") && viper.GetString("sizecheck.maxsize") == "" {
+		validationErrors = append(validationErrors, "Invalid maximum size")
+	}
+
+	if viper.IsSet("uploaders.uploaders") && viper.GetString("uploaders.uploaders") == "" {
+		validationErrors = append(validationErrors, "Invalid uploader list")
+	}
+
+	if viper.IsSet("uploaders.mode") && viper.GetString("uploaders.mode") == "" {
+		validationErrors = append(validationErrors, "Invalid uploader mode set")
+	}
+
+	if viper.IsSet("record_labels.record_labels") && viper.GetString("record_labels.record_labels") == "" {
+		validationErrors = append(validationErrors, "Invalid record_labels set")
+	}
+
+	if !viper.IsSet("logs.loglevel") || viper.GetString("logs.loglevel") == "" {
+		validationErrors = append(validationErrors, "Log level is required")
+	}
+
+	if !viper.IsSet("logs.logtofile") {
+		validationErrors = append(validationErrors, "Log to file flag is required")
+	}
+
+	if viper.GetBool("logs.logtofile") && (!viper.IsSet("logs.logfilepath") || viper.GetString("logs.logfilepath") == "") {
+		validationErrors = append(validationErrors, "Log file path is required when logging to a file")
+	}
+
+	if !viper.IsSet("logs.maxsize") || viper.GetInt("logs.maxsize") <= 0 {
+		validationErrors = append(validationErrors, "Max log file size should be a positive integer")
+	}
+
+	if !viper.IsSet("logs.maxbackups") || viper.GetInt("logs.maxbackups") < 0 {
+		validationErrors = append(validationErrors, "Max backups should be a non-negative integer")
+	}
+
+	if !viper.IsSet("logs.maxage") || viper.GetInt("logs.maxage") <= 0 {
+		validationErrors = append(validationErrors, "Max age should be a positive integer")
+	}
+
+	if !viper.IsSet("logs.compress") {
+		validationErrors = append(validationErrors, "Compress flag is required")
+	}
+
+	if len(validationErrors) > 0 {
+		return errors.New(strings.Join(validationErrors, "; "))
+	}
+
+	return nil
 }

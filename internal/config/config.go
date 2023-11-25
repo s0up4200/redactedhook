@@ -1,5 +1,12 @@
 package config
 
+import (
+	"fmt"
+	"os"
+
+	"github.com/rs/zerolog/log"
+)
+
 const (
 	defaultConfigFileName = "config.toml"
 	defaultConfigType     = "toml"
@@ -11,8 +18,8 @@ func GetConfig() *Config {
 	return &config
 }
 
-func CreateConfig() []byte {
-	return []byte(`[authorization]
+func CreateConfigFile() string {
+	config := `[authorization]
 api_token = "" # generate with "redactedhook generate-apitoken"
 # the api_token needs to be set as a header for the webhook to work
 # eg. X-API-Token=asd987gsd98g7324kjh142kjh
@@ -47,5 +54,12 @@ maxsize = 10                     # Max file size in MB
 maxbackups = 3                   # Max number of old log files to keep
 maxage = 28                      # Max age in days to keep a log file
 compress = false                 # Whether to compress old log files
-`)
+`
+
+	err := os.WriteFile("config.toml", []byte(config), 0644)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to write default configuration file")
+	}
+	fmt.Println("Configuration file 'config.toml' generated.")
+	return "config.toml"
 }
