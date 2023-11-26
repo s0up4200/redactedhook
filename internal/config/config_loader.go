@@ -18,14 +18,26 @@ func InitConfig(configPath string) {
 }
 
 func setupViper(configFile string) {
+	// Set default values before reading the config file
+	viper.SetDefault("userid.red_user_id", 0)
+	viper.SetDefault("userid.ops_user_id", 0)
+	viper.SetDefault("ratio.minratio", 0)
+	viper.SetDefault("sizecheck.minsize", "")
+	viper.SetDefault("sizecheck.maxsize", "")
+	viper.SetDefault("uploaders.uploaders", "")
+	viper.SetDefault("uploaders.mode", "")
+	viper.SetDefault("record_labels.record_labels", "")
+
 	viper.SetConfigType(defaultConfigType)
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.SetConfigFile(configFile)
 
-	//if err := createConfigFileIfNotExist(configFile); err != nil {
+	// Uncomment this if you want to ensure the config file exists
+	// and create it if it does not.
+	// if err := createConfigFileIfNotExist(configFile); err != nil {
 	//	log.Fatal().Err(err).Msg("Failed to create or verify config file")
-	//}
+	// }
 
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatal().Err(err).Msg("Error reading config file")
@@ -43,22 +55,30 @@ func readAndUnmarshalConfig() {
 }
 
 func parseSizeCheck() {
-	if config.SizeCheck.MinSize != "" && !strings.HasPrefix(config.SizeCheck.MinSize, "#") {
-		minSize, err := bytesize.Parse(config.SizeCheck.MinSize)
+	// Parse MinSize
+	minSizeStr := viper.GetString("sizecheck.minsize")
+	if minSizeStr == "" {
+		config.ParsedSizes.MinSize = 0 // Reset to default when empty string is provided
+	} else {
+		minSize, err := bytesize.Parse(minSizeStr)
 		if err != nil {
-			log.Error().Err(err).Msg("Invalid format for minsize")
-			return
+			log.Error().Err(err).Msg("Invalid format for MinSize; unable to parse")
+		} else {
+			config.ParsedSizes.MinSize = minSize
 		}
-		config.ParsedSizes.MinSize = minSize
 	}
 
-	if config.SizeCheck.MaxSize != "" && !strings.HasPrefix(config.SizeCheck.MaxSize, "#") {
-		maxSize, err := bytesize.Parse(config.SizeCheck.MaxSize)
+	// Parse MaxSize
+	maxSizeStr := viper.GetString("sizecheck.maxsize")
+	if maxSizeStr == "" {
+		config.ParsedSizes.MaxSize = 0 // Reset to default when empty string is provided
+	} else {
+		maxSize, err := bytesize.Parse(maxSizeStr)
 		if err != nil {
-			log.Error().Err(err).Msg("Invalid format for maxsize")
-			return
+			log.Error().Err(err).Msg("Invalid format for MaxSize; unable to parse")
+		} else {
+			config.ParsedSizes.MaxSize = maxSize
 		}
-		config.ParsedSizes.MaxSize = maxSize
 	}
 }
 
@@ -165,37 +185,37 @@ func ValidateConfig() error {
 		validationErrors = append(validationErrors, "Indexer OPSKey should not be empty")
 	}
 
-	if viper.IsSet("userid.red_user_id") && viper.GetInt("userid.red_user_id") <= 0 {
-		validationErrors = append(validationErrors, "Invalid RED User ID")
-	}
+	//if viper.IsSet("userid.red_user_id") && viper.GetInt("userid.red_user_id") <= 0 {
+	//	validationErrors = append(validationErrors, "Invalid RED User ID")
+	//}
 
-	if viper.IsSet("userid.ops_user_id") && viper.GetInt("userid.ops_user_id") <= 0 {
-		validationErrors = append(validationErrors, "Invalid OPS User ID")
-	}
+	//if viper.IsSet("userid.ops_user_id") && viper.GetInt("userid.ops_user_id") <= 0 {
+	//	validationErrors = append(validationErrors, "Invalid OPS User ID")
+	//}
 
-	if viper.IsSet("ratio.minratio") && viper.GetFloat64("ratio.minratio") <= 0 {
-		validationErrors = append(validationErrors, "Minimum ratio should be positive")
-	}
+	//if viper.IsSet("ratio.minratio") && viper.GetFloat64("ratio.minratio") <= 0 {
+	//	validationErrors = append(validationErrors, "Minimum ratio should be positive")
+	//}
 
-	if viper.IsSet("sizecheck.minsize") && viper.GetString("sizecheck.minsize") == "" {
-		validationErrors = append(validationErrors, "Invalid minimum size")
-	}
+	//if viper.IsSet("sizecheck.minsize") && viper.GetString("sizecheck.minsize") == "" {
+	//	validationErrors = append(validationErrors, "Invalid minimum size")
+	//}
 
-	if viper.IsSet("sizecheck.maxsize") && viper.GetString("sizecheck.maxsize") == "" {
-		validationErrors = append(validationErrors, "Invalid maximum size")
-	}
+	//if viper.IsSet("sizecheck.maxsize") && viper.GetString("sizecheck.maxsize") == "" {
+	//	validationErrors = append(validationErrors, "Invalid maximum size")
+	//}
 
-	if viper.IsSet("uploaders.uploaders") && viper.GetString("uploaders.uploaders") == "" {
-		validationErrors = append(validationErrors, "Invalid uploader list")
-	}
+	//if viper.IsSet("uploaders.uploaders") && viper.GetString("uploaders.uploaders") == "" {
+	//	validationErrors = append(validationErrors, "Invalid uploader list")
+	//}
 
-	if viper.IsSet("uploaders.mode") && viper.GetString("uploaders.mode") == "" {
-		validationErrors = append(validationErrors, "Invalid uploader mode set")
-	}
+	//if viper.IsSet("uploaders.mode") && viper.GetString("uploaders.mode") == "" {
+	//	validationErrors = append(validationErrors, "Invalid uploader mode set")
+	//}
 
-	if viper.IsSet("record_labels.record_labels") && viper.GetString("record_labels.record_labels") == "" {
-		validationErrors = append(validationErrors, "Invalid record_labels set")
-	}
+	//if viper.IsSet("record_labels.record_labels") && viper.GetString("record_labels.record_labels") == "" {
+	//	validationErrors = append(validationErrors, "Invalid record_labels set")
+	//}
 
 	if !viper.IsSet("logs.loglevel") || viper.GetString("logs.loglevel") == "" {
 		validationErrors = append(validationErrors, "Log level is required")

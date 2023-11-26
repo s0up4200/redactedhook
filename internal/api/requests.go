@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -18,14 +20,13 @@ func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string,
 
 	if !limiter.Allow() {
 		log.Warn().Msgf("%s: Too many requests", indexer)
-		return fmt.Errorf("too many requests")
+		return fmt.Errorf("rate limit exceeded for %s", indexer)
 	}
 
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
-		wrappedErr := fmt.Errorf("error making HTTP request to %s: %w", endpoint, err)
-		log.Error().Err(wrappedErr).Msg("fetchAPI error")
-		return wrappedErr
+		log.Error().Err(err).Msg("Error creating HTTP request")
+		return err
 	}
 	req.Header.Set("Authorization", apiKey)
 
@@ -35,20 +36,34 @@ func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string,
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Error().Msgf("fetchAPI error: %v", err)
+		log.Error().Err(err).Msg("Error executing HTTP request")
 		return err
 	}
 	defer resp.Body.Close()
 
+	//dump, err := httputil.DumpResponse(resp, true)
+	//if err != nil {
+	//	log.Error().Err(err).Msg("Error dumping the response")
+	//	return err
+	//}
+	//
+	//fmt.Printf("HTTP Response:\n%s\n", dump)
+
+	if resp.StatusCode >= 400 {
+		errMsg := fmt.Sprintf("HTTP error: %d from %s", resp.StatusCode, endpoint)
+		log.Error().Msg(errMsg)
+		return errors.New(errMsg)
+	}
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Error().Msgf("fetchAPI error: %v", err)
+		log.Error().Err(err).Msg("fetchAPI error")
 		return err
 	}
 
 	if err := json.Unmarshal(respBody, target); err != nil {
-		log.Error().Msgf("fetchAPI error: %v", err)
-		return err
+		log.Error().Err(err).Msg("Invalid JSON response")
+		return fmt.Errorf("invalid JSON response: %w", err)
 	}
 
 	responseData, ok := target.(*ResponseData)
@@ -58,7 +73,7 @@ func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string,
 	}
 
 	if responseData.Status != "success" {
-		log.Warn().Msgf("API error from %s: %s", indexer, responseData.Error)
+		//	log.Warn().Msgf("API error from %s: %s", indexer, responseData.Error)
 		return fmt.Errorf("API error from %s: %s", indexer, responseData.Error)
 	}
 
@@ -67,7 +82,6 @@ func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string,
 
 // initiates an API request with the given parameters and returns the response data or an error.
 func initiateAPIRequest(id int, action string, apiKey, apiBase, indexer string) (*ResponseData, error) {
-
 	limiter := getLimiter(indexer)
 	if limiter == nil {
 		return nil, fmt.Errorf("could not get rate limiter for indexer: %s", indexer)
@@ -75,13 +89,11 @@ func initiateAPIRequest(id int, action string, apiKey, apiBase, indexer string) 
 
 	endpoint := fmt.Sprintf("%s?action=%s&id=%d", apiBase, action, id)
 	responseData := &ResponseData{}
-	if err := makeRequest(endpoint, apiKey, limiter, indexer, responseData); err != nil {
-		wrappedErr := fmt.Errorf("initiateAPIRequest failed for endpoint %s: %w", endpoint, err)
-		log.Error().Err(wrappedErr).Msg("API request initiation error")
-		return nil, wrappedErr
+	err := makeRequest(endpoint, apiKey, limiter, indexer, responseData)
+	if err != nil {
+		return nil, err
 	}
 
-	// Log the release information
 	if action == "torrent" && responseData.Response.Torrent != nil {
 		releaseName := html.UnescapeString(responseData.Response.Torrent.ReleaseName)
 		uploader := responseData.Response.Torrent.Username
@@ -108,8 +120,11 @@ func fetchResponseData(requestData *RequestData, id int, action string, apiBase 
 
 	responseData, err := initiateAPIRequest(id, action, apiKey, apiBase, requestData.Indexer)
 	if err != nil {
+		if strings.Contains(err.Error(), "rate limit exceeded") {
+			return nil, err
+		}
 		wrappedErr := fmt.Errorf("error fetching %s data for ID %d: %w", action, id, err)
-		log.Error().Err(wrappedErr).Msg("Data fetching error")
+		log.Error().Err(wrappedErr).Msg("Data fetching")
 		return nil, wrappedErr
 	}
 

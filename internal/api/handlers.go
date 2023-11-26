@@ -1,7 +1,9 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/s0up4200/redactedhook/internal/config"
@@ -52,34 +54,60 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	setAuthorizationHeader(&reqHeader, &requestData)
 
 	// Call hooks
+
+	if requestData.TorrentID != 0 && (requestData.MinSize != 0 || requestData.MaxSize != 0) {
+		if err := hookSize(&requestData, apiBase); err != nil {
+			handleErrors(w, err, StatusSizeNotAllowed)
+			return
+
+		}
+	}
+
 	if requestData.TorrentID != 0 && requestData.Uploaders != "" {
 		if err := hookUploader(&requestData, apiBase); err != nil {
-			http.Error(w, err.Error(), StatusUploaderNotAllowed)
+			handleErrors(w, err, StatusUploaderNotAllowed)
 			return
+
 		}
 	}
 
 	if requestData.TorrentID != 0 && requestData.RecordLabel != "" {
 		if err := hookRecordLabel(&requestData, apiBase); err != nil {
-			http.Error(w, err.Error(), StatusLabelNotAllowed)
-			return
-		}
-	}
-
-	if requestData.TorrentID != 0 && (requestData.MinSize != 0 || requestData.MaxSize != 0) {
-		if err := hookSize(&requestData, apiBase); err != nil {
-			http.Error(w, err.Error(), StatusSizeNotAllowed)
+			handleErrors(w, err, StatusLabelNotAllowed)
 			return
 		}
 	}
 
 	if requestData.MinRatio != 0 {
 		if err := hookRatio(&requestData, apiBase); err != nil {
-			http.Error(w, err.Error(), StatusRatioNotAllowed)
+			handleErrors(w, err, StatusRatioNotAllowed)
 			return
+
 		}
 	}
 
 	w.WriteHeader(http.StatusOK) // HTTP status code 200
 	log.Info().Msgf("[%s] Conditions met, responding with status 200", requestData.Indexer)
+}
+
+func handleErrors(w http.ResponseWriter, err error, defaultStatusCode int) {
+	if strings.Contains(err.Error(), "invalid JSON response") {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return // We're done here, no need to continue.
+	}
+
+	if strings.HasPrefix(err.Error(), "HTTP error:") {
+		// Extract the status code from the error message
+		var statusCode int
+		_, scanErr := fmt.Sscanf(err.Error(), "HTTP error: %d", &statusCode)
+		if scanErr == nil && statusCode != 0 {
+			http.Error(w, err.Error(), statusCode)
+			return // We're done here, too.
+		}
+		// Fallback to internal server error if status code extraction fails
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return // Still done.
+	}
+
+	http.Error(w, err.Error(), defaultStatusCode)
 }

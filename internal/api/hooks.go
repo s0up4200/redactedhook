@@ -79,6 +79,7 @@ func hookSize(requestData *RequestData, apiBase string) error {
 	torrentSize := bytesize.ByteSize(torrentData.Response.Torrent.Size)
 	minSize := bytesize.ByteSize(requestData.MinSize)
 	maxSize := bytesize.ByteSize(requestData.MaxSize)
+
 	log.Trace().Msgf("[%s] Torrent size: %s, Requested size range: %s - %s", requestData.Indexer, torrentSize, requestData.MinSize, requestData.MaxSize)
 
 	if (requestData.MinSize != 0 && torrentSize < minSize) ||
@@ -88,21 +89,31 @@ func hookSize(requestData *RequestData, apiBase string) error {
 	}
 
 	return nil
+
 }
 
 // checks if the user ratio is above the minimum requirement based on the requestData.
 func hookRatio(requestData *RequestData, apiBase string) error {
 	userID := requestData.REDUserID
+	minRatio := requestData.MinRatio
 	if requestData.Indexer == "ops" {
 		userID = requestData.OPSUserID
 	}
+
+	// Check for incomplete configuration
+	if userID == 0 || minRatio == 0 {
+		if userID != 0 || minRatio != 0 {
+			log.Warn().Msgf("[%s] Incomplete ratio check configuration: userID or minRatio is missing.", requestData.Indexer)
+		}
+		return nil // Exit early if either is zero, as the check cannot proceed
+	}
+
 	userData, err := fetchResponseData(requestData, userID, "user", apiBase)
 	if err != nil {
 		return err
 	}
 
 	ratio := userData.Response.Stats.Ratio
-	minRatio := requestData.MinRatio
 	username := userData.Response.Username
 
 	log.Trace().Msgf("[%s] MinRatio set to %.2f for %s", requestData.Indexer, minRatio, username)
