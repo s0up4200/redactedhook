@@ -60,7 +60,7 @@ services:
       - SERVER_PORT=42135 # defaults to 42135
       - TZ=UTC
     ports:
-      - "127.0.0.1:42135:42135"
+      - 127.0.0.1:42135:42135
     volumes:
       - /redactedhook:/redactedhook:rw
     restart: unless-stopped
