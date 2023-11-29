@@ -1,5 +1,5 @@
 # build app
-FROM golang:1.20-alpine3.18.4 AS app-builder
+FROM golang:1.20-alpine3.16 AS app-builder
 
 # Install necessary tools
 RUN apk add --no-cache git tzdata
@@ -29,7 +29,7 @@ RUN --mount=target=. \
     -o /out/bin/redactedhook cmd/redactedhook/main.go
 
 # build runner
-FROM alpine:3.18.4
+FROM alpine:3.16
 
 # Set metadata and environment variables
 LABEL org.opencontainers.image.source = "https://github.com/s0up4200/redactedhook"
