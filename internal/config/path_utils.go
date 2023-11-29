@@ -19,7 +19,7 @@ func determineConfigFile(configPath string) string {
 		return configPath
 	}
 
-	configDir := defaultConfigDir
+	var configDir string
 	if isRunningInDocker() {
 		// In Docker, default to the mapped volume directory
 		configDir = os.Getenv("XDG_CONFIG_HOME")

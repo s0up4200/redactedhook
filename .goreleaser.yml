@@ -66,11 +66,11 @@ changelog:
       - Merge remote-tracking branch
       - Merge branch
   groups:
-    - title: "New Features"
-      regexp: "^.*feat[(\\w)]*:+.*$"
+    - title: New Features
+      regexp: ^.*feat[(\\w)]*:+.*$
       order: 0
-    - title: "Bug fixes"
-      regexp: "^.*fix[(\\w)]*:+.*$"
+    - title: Bug fixes
+      regexp: ^.*fix[(\\w)]*:+.*$
       order: 10
     - title: Other work
       order: 999

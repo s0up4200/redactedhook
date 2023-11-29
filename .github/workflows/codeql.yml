@@ -1,12 +1,12 @@
-name: "CodeQL"
+name: CodeQL
 
 on:
   push:
-    branches: ["develop", "master"]
+    branches: [develop, master]
   pull_request:
-    branches: ["develop"]
+    branches: [develop]
   schedule:
-    - cron: "20 13 * * 6"
+    - cron: 20 13 * * 6
 
 jobs:
   analyze:
@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ["go"]
+        language: [go]
 
     steps:
       - name: Checkout repository
@@ -30,7 +30,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: "1.20.1" # Replace with your Go version
+          go-version: 1.20.1
           cache: true
 
       - name: Initialize CodeQL
@@ -41,12 +41,6 @@ jobs:
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v2
-
-      # Uncomment below if autobuild doesn't work for your project
-      # - name: Manual Build
-      #   run: |
-      #     echo "Build the Go project"
-      #     go build ./...
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
