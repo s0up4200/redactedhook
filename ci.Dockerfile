@@ -29,7 +29,7 @@ RUN --mount=target=. \
     -o /out/bin/redactedhook cmd/redactedhook/main.go
 
 # build runner
-FROM alpine:3.16
+FROM alpine:latest
 
 # Set metadata and environment variables
 LABEL org.opencontainers.image.source = "https://github.com/s0up4200/redactedhook"
