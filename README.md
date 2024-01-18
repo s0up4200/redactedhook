@@ -60,7 +60,7 @@ services:
       - SERVER_PORT=42135 # defaults to 42135
       - TZ=UTC
     ports:
-      - 127.0.0.1:42135:42135
+      - "42135:42135"
     volumes:
       - /redactedhook:/redactedhook:rw
     restart: unless-stopped
@@ -174,7 +174,7 @@ curl -X POST \
      -H "X-API-Token: s3cr3tt0k3n" \
      -H "Content-Type: application/json" \
      -d '{ "torrent_id": {{.TorrentID}}, "indexer": "{{ .Indexer | js }}"} \
-     http://127.0.0.1:42135/hook
+     http://127.0.0.1:42135/hook'
 ```
 
 ### Payload
