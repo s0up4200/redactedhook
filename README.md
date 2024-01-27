@@ -184,7 +184,7 @@ curl -X POST \
 ```json
 {
     "torrent_id": {{.TorrentID}},
-    "indexer": "{{ .Indexer | js }}",
+    "indexer": "{{ .Indexer | js }}"
 }
 ```
 
