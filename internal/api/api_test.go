@@ -59,7 +59,7 @@ func TestValidateRequestData(t *testing.T) {
 			name:    "Invalid Uploaders",
 			request: RequestData{Indexer: "ops", Uploaders: "uploader#1"},
 			wantErr: true,
-			errMsg:  "uploaders field should only contain alphanumeric characters",
+			errMsg:  "uploaders field should only contain alphanumeric characters and underscores",
 		},
 		{
 			name:    "Valid Uploaders",
