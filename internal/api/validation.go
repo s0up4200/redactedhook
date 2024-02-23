@@ -68,7 +68,7 @@ func validateRequestData(requestData *RequestData) error {
 
 	if requestData.Uploaders != "" {
 		if !uploadersRegex.MatchString(requestData.Uploaders) {
-			errMsg := "uploaders field should only contain alphanumeric characters"
+			errMsg := "uploaders field should only contain alphanumeric characters and underscores"
 			log.Debug().Msg(errMsg)
 			return fmt.Errorf(errMsg)
 		}
