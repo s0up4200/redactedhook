@@ -171,10 +171,10 @@ Set it in the config, and use it as a header like:
 
 ```bash
 curl -X POST \
-     -H "X-API-Token: s3cr3tt0k3n" \
+     -H "X-API-Token: 098qw0e98ass" \
      -H "Content-Type: application/json" \
-     -d '{ "torrent_id": {{.TorrentID}}, "indexer": "{{ .Indexer | js }}"} \
-     http://127.0.0.1:42135/hook'
+     -d '{"torrent_id": 12345, "indexer": "ops", "uploaders": "the_worst_uploader,thebestuploader", "mode": "blacklist"}' \
+     http://127.0.0.1:42135/hook
 ```
 
 ### Payload
