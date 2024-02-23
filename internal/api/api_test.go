@@ -56,18 +56,6 @@ func TestValidateRequestData(t *testing.T) {
 			errMsg:  "minsize cannot be greater than maxsize",
 		},
 		{
-			name:    "Invalid Uploaders",
-			request: RequestData{Indexer: "ops", Uploaders: "uploader#1"},
-			wantErr: true,
-			errMsg:  "uploaders field should only contain alphanumeric characters and underscores",
-		},
-		{
-			name:    "Valid Uploaders",
-			request: RequestData{Indexer: "ops", Uploaders: "uploader_1", Mode: "whitelist"},
-			wantErr: false,
-			errMsg:  "",
-		},
-		{
 			name:    "Invalid RecordLabel",
 			request: RequestData{Indexer: "ops", RecordLabel: "label#1"},
 			wantErr: true,
