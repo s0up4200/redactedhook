@@ -27,7 +27,7 @@ func validateRequestMethod(method string) error {
 
 // checks if the given `RequestData` object contains valid data and returns an error if any of the validations fail.
 func validateRequestData(requestData *RequestData) error {
-	uploadersRegex := regexp.MustCompile(`^[a-zA-Z0-9, ]+$`)
+	uploadersRegex := regexp.MustCompile(`^[a-zA-Z0-9_. ]+$`)
 	safeCharacterRegex := regexp.MustCompile(`^[\p{L}\p{N}\s&,-]+$`)
 
 	if requestData.Indexer != "ops" && requestData.Indexer != "redacted" {
