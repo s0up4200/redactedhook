@@ -7,7 +7,7 @@ import (
 	"math"
 	"github.com/inhies/go-bytesize"
 	"github.com/rs/zerolog/log"
-	"github.com/pelletier/go-toml"
+	"github.com/pelletier/go-toml/v2"
 )
 
 // checks if the uploader is allowed based on the requestData.
