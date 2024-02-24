@@ -25,6 +25,9 @@ api_token = "" # generate with "redactedhook generate-apitoken"
 [record_labels]
 #record_labels = "" # comma separated list of record labels to filter for
 
+[dynamicratio]
+enabled = true # Toggle to enable dynamic minratio updating
+
 [logs]
 loglevel = "trace"               # trace, debug, info
 logtofile = false                # Set to true to enable logging to a file
