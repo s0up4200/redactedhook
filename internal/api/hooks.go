@@ -7,6 +7,7 @@ import (
 	"math"
 	"github.com/inhies/go-bytesize"
 	"github.com/rs/zerolog/log"
+	"github.com/pelletier/go-toml"
 )
 
 // checks if the uploader is allowed based on the requestData.
@@ -123,20 +124,44 @@ func hookRatio(requestData *RequestData, apiBase string) error {
 		return fmt.Errorf("returned ratio is below minimum requirement")
 	}
 
-	// Update minratio if the user's ratio is higher than the current minratio
-    	if ratio > minRatio {
-           // Round the ratio down to 2 significant figures
-           minRatio = math.Floor(ratio*100) / 100 // Round down to 2 decimal places
-           // Update the minratio in the config file
-           err := updateConfigMinRatio(requestData.Indexer, minRatio)
-           if err != nil {
-               log.Error().Msgf("[%s] Failed to update minratio in config file: %v", requestData.Indexer, err)
-               return err
-           }
+	// Check if dynamic_minratio toggle is enabled
+    if config.DynamicRatio.Enabled {
+        // Update minratio if the user's ratio is higher than the current minratio
+        if ratio > minRatio {
+            // Round the ratio down to 2 significant figures
+            minRatio = math.Floor(ratio*100) / 100 // Round down to 2 decimal places
+            // Update the minratio in the config file
+            err := updateConfigMinRatio(requestData.Indexer, minRatio)
+            if err != nil {
+                log.Error().Msgf("[%s] Failed to update minratio in config file: %v", requestData.Indexer, err)
+                return err
+            }
 
-           log.Info().Msgf("[%s] Updated minratio to %.2f for %s", requestData.Indexer, minRatio, username)
+            log.Info().Msgf("[%s] Updated minratio to %.2f for %s", requestData.Indexer, minRatio, username)
+        }
+    } else {
+        log.Debug().Msgf("[%s] Dynamic minratio updating is disabled", requestData.Indexer)
     }
 
+    return nil
+}
 
-	return nil
+// Function to update the minratio in the config file
+func updateConfigMinRatio(configFilePath string, minRatio float64) error {
+    // Load the existing config file
+    config, err := toml.LoadFile(configFilePath)
+    if err != nil {
+        return err
+    }
+
+    // Update the minratio value under [dynamicratio] section
+    config.Set("dynamicratio.enabled", minRatio)
+
+    // Save the changes back to the config file
+    err = config.WriteFile(configFilePath, 0644)
+    if err != nil {
+        return err
+    }
+
+    return nil
 }
