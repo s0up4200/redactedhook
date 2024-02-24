@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"html"
 	"strings"
-
+	"math"
 	"github.com/inhies/go-bytesize"
 	"github.com/rs/zerolog/log"
 )
@@ -122,6 +122,21 @@ func hookRatio(requestData *RequestData, apiBase string) error {
 		log.Debug().Msgf("[%s] Returned ratio %.2f is below minratio %.2f for %s", requestData.Indexer, ratio, minRatio, username)
 		return fmt.Errorf("returned ratio is below minimum requirement")
 	}
+
+	// Update minratio if the user's ratio is higher than the current minratio
+    	if ratio > minRatio {
+           // Round the ratio down to 2 significant figures
+           minRatio = math.Floor(ratio*100) / 100 // Round down to 2 decimal places
+           // Update the minratio in the config file
+           err := updateConfigMinRatio(requestData.Indexer, minRatio)
+           if err != nil {
+               log.Error().Msgf("[%s] Failed to update minratio in config file: %v", requestData.Indexer, err)
+               return err
+           }
+
+           log.Info().Msgf("[%s] Updated minratio to %.2f for %s", requestData.Indexer, minRatio, username)
+    }
+
 
 	return nil
 }
