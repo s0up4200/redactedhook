@@ -5,8 +5,6 @@ ARG VERSION=dev
 ARG REVISION=dev
 ARG BUILDTIME
 
-RUN apk add --no-cache git tzdata
-
 ENV SERVICE=redactedhook
 
 WORKDIR /src

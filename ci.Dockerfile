@@ -1,9 +1,6 @@
 # build app
 FROM --platform=$BUILDPLATFORM golang:1.20-alpine3.16 AS app-builder
 
-# Install necessary tools
-RUN apk --no-cache add ca-certificates curl tzdata jq
-
 # Set work directory
 WORKDIR /src
 
