@@ -21,7 +21,7 @@ COPY . ./
 RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o bin/redactedhook cmd/redactedhook/main.go
 
 # build runner
-FROM gcr.io/distroless/base-debian12
+FROM gcr.io/distroless/static-debian12
 
 ENV HOME="/redactedhook" \
     XDG_CONFIG_HOME="/redactedhook" \
