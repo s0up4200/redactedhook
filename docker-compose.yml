@@ -1,15 +1,24 @@
-version: "3.8"
 services:
   redactedhook:
     container_name: redactedhook
     image: ghcr.io/s0up4200/redactedhook:latest
-    user: 1000:1000
+    #build:
+      #context: .
+      #dockerfile: Dockerfile
+    #runtime: runsc-ptrace
+    #network_mode: bridge
+    user: nobody
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     environment:
       - SERVER_ADDRESS=0.0.0.0 # binds to 127.0.0.1 by default
       - SERVER_PORT=42135 # defaults to 42135
       - TZ=UTC
     ports:
-      - "127.0.0.1:42135:42135"
+      - 127.0.0.1:42135:42135
     volumes:
-      - /redactedhook:/redactedhook:rw
+      - ./:/redactedhook
     restart: unless-stopped

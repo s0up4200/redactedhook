@@ -1,9 +1,6 @@
 # build app
 FROM --platform=$BUILDPLATFORM golang:1.20-alpine3.16 AS app-builder
 
-# Install necessary tools
-RUN apk add --no-cache git tzdata
-
 # Set work directory
 WORKDIR /src
 
@@ -29,16 +26,13 @@ RUN --mount=target=. \
     -o /out/bin/redactedhook cmd/redactedhook/main.go
 
 # build runner
-FROM alpine:latest
+FROM gcr.io/distroless/static-debian12
 
 # Set metadata and environment variables
 LABEL org.opencontainers.image.source = "https://github.com/s0up4200/redactedhook"
 ENV HOME="/redactedhook" \
     XDG_CONFIG_HOME="/redactedhook" \
     XDG_DATA_HOME="/redactedhook"
-
-# Install runtime dependencies
-RUN apk --no-cache add ca-certificates curl tzdata jq
 
 # Set work directory and expose necessary ports
 WORKDIR /redactedhook

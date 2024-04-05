@@ -5,9 +5,6 @@ ARG VERSION=dev
 ARG REVISION=dev
 ARG BUILDTIME
 
-# Install only necessary packages for the build
-RUN apk add --no-cache git tzdata
-
 ENV SERVICE=redactedhook
 
 WORKDIR /src
@@ -22,16 +19,12 @@ COPY . ./
 RUN go build -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${REVISION} -X main.date=${BUILDTIME}" -o bin/redactedhook cmd/redactedhook/main.go
 
 # build runner
-FROM alpine:latest
-
-LABEL org.opencontainers.image.source = "https://github.com/s0up4200/redactedhook"
+FROM gcr.io/distroless/static-debian12
 
 ENV HOME="/redactedhook" \
     XDG_CONFIG_HOME="/redactedhook" \
     XDG_DATA_HOME="/redactedhook"
 
-# Install runtime dependencies
-RUN apk --no-cache add ca-certificates curl tzdata jq
 
 WORKDIR /redactedhook
 
