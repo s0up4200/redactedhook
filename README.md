@@ -49,7 +49,6 @@ docker pull ghcr.io/s0up4200/redactedhook:latest
 #### Docker Compose
 
 ```docker
-version: "3.8"
 services:
   redactedhook:
     container_name: redactedhook
