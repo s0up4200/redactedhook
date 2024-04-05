@@ -1,9 +1,9 @@
 services:
   redactedhook:
     container_name: redactedhook
-    image: redactedhook-distroless
-    build:
-      context: .
+    image: ghcr.io/s0up4200/redactedhook:latest
+    #build:
+      #context: .
       #dockerfile: Dockerfile
     #runtime: runsc-ptrace
     #network_mode: bridge
