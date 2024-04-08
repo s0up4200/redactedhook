@@ -26,7 +26,7 @@ RUN --mount=target=. \
     -o /out/bin/redactedhook cmd/redactedhook/main.go
 
 # build runner
-FROM gcr.io/distroless/static-debian12
+FROM gcr.io/distroless/static-debian12:nonroot
 
 # Set metadata and environment variables
 LABEL org.opencontainers.image.source = "https://github.com/s0up4200/redactedhook"
