@@ -1,5 +1,6 @@
 dist/
 bin/
+redactedhook/
 .vscode
 
 __debug_bin
