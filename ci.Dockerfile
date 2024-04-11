@@ -1,5 +1,5 @@
 # build app
-FROM --platform=$BUILDPLATFORM golang:1.20-alpine3.19.1 AS app-builder
+FROM --platform=$BUILDPLATFORM golang:1.22-alpine3.19 AS app-builder
 
 # Set work directory
 WORKDIR /src
