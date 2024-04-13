@@ -112,12 +112,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download web production build
-        uses: actions/download-artifact@v4
-        with:
-          name: web-dist
-          path: web/dist
-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
