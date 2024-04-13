@@ -54,14 +54,20 @@ services:
     container_name: redactedhook
     image: ghcr.io/s0up4200/redactedhook:latest
     user: 1000:1000
+    #user: nobody
+    #read_only: true
+    #security_opt:
+    #  - no-new-privileges:true
+    #cap_drop:
+    #  - ALL
     environment:
-      - SERVER_ADDRESS=0.0.0.0 # binds to 127.0.0.1 by default
-      - SERVER_PORT=42135 # defaults to 42135
+      - REDACTEDHOOK__HOST=0.0.0.0 # binds to 127.0.0.1 by default
+      - REDACTEDHOOK__PORT=42135 # defaults to 42135
       - TZ=UTC
     ports:
       - "42135:42135"
     volumes:
-      - /redactedhook:/redactedhook:rw
+      - ./:/redactedhook
     restart: unless-stopped
 ```
 
