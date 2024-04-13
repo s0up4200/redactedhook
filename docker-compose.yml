@@ -14,8 +14,8 @@ services:
     cap_drop:
       - ALL
     environment:
-      - SERVER_ADDRESS=0.0.0.0 # binds to 127.0.0.1 by default
-      - SERVER_PORT=42135 # defaults to 42135
+      - REDACTEDHOOK__HOST=0.0.0.0 # binds to 127.0.0.1 by default
+      - REDACTEDHOOK__PORT=42135 # defaults to 42135
       - TZ=UTC
     ports:
       - 127.0.0.1:42135:42135
