@@ -1,0 +1,6 @@
+.github/
+distrib/
+.gitignore
+.goreleaser.yml
+ci.Dockerfile
+Makefile

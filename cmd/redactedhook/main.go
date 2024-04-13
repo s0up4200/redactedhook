@@ -26,8 +26,8 @@ var (
 
 const (
 	path             = "/hook"
-	EnvServerAddress = "SERVER_ADDRESS"
-	EnvServerPort    = "SERVER_PORT"
+	EnvServerAddress = "REDACTEDHOOK__HOST"
+	EnvServerPort    = "REDACTEDHOOK__PORT"
 )
 
 func generateAPIToken(length int) string {
