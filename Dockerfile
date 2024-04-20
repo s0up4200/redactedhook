@@ -10,7 +10,7 @@ ENV SERVICE=redactedhook
 WORKDIR /src
 
 COPY go.mod go.sum ./
-RUN go mod downloadx
+RUN go mod download
 
 COPY . ./
 
