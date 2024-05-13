@@ -19,10 +19,14 @@ func GetConfig() *Config {
 }
 
 func CreateConfigFile() string {
-	config := `[authorization]
+	config := `[server]
+host = "127.0.0.1" # Server host
+port = 42135       # Server port
+
+[authorization]
 api_token = "" # generate with "redactedhook generate-apitoken"
 # the api_token needs to be set as a header for the webhook to work
-# eg. X-API-Token=asd987gsd98g7324kjh142kjh
+# eg. Header: X-API-Token=aaa129cd1d66ed6fa567da2d07a5dd0e
 
 [indexer_keys]
 #red_apikey = "" # generate in user settings, needs torrent and user privileges
@@ -56,10 +60,10 @@ maxage = 28                      # Max age in days to keep a log file
 compress = false                 # Whether to compress old log files
 `
 
-	err := os.WriteFile("config.toml", []byte(config), 0644)
+	err := os.WriteFile(defaultConfigFileName, []byte(config), 0644)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to write default configuration file")
 	}
 	fmt.Println("Configuration file 'config.toml' generated.")
-	return "config.toml"
+	return defaultConfigFileName
 }

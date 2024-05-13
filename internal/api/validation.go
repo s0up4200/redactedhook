@@ -9,15 +9,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// verifyAPIKey checks if the provided API key matches the expected one.
-func verifyAPIKey(headerAPIKey string, expectedAPIKey string) error {
+func verifyAPIKey(headerAPIKey, expectedAPIKey string) error {
 	if expectedAPIKey == "" || headerAPIKey != expectedAPIKey {
 		return fmt.Errorf("invalid or missing API key")
 	}
 	return nil
 }
 
-// validateRequestMethod ensures the request uses the POST method.
 func validateRequestMethod(method string) error {
 	if method != http.MethodPost {
 		return fmt.Errorf("only POST method is supported")
@@ -25,29 +23,27 @@ func validateRequestMethod(method string) error {
 	return nil
 }
 
-// checks if the given `RequestData` object contains valid data and returns an error if any of the validations fail.
 func validateRequestData(requestData *RequestData) error {
 	safeCharacterRegex := regexp.MustCompile(`^[\p{L}\p{N}\s&,-]+$`)
 
-	if requestData.Indexer != "ops" && requestData.Indexer != "redacted" {
-		errMsg := fmt.Sprintf("invalid indexer: %s", requestData.Indexer)
-		log.Debug().Msg(errMsg)
-		return fmt.Errorf(errMsg)
+	if err := validateIndexer(requestData.Indexer); err != nil {
+		log.Debug().Err(err).Msg("Validation error")
+		return err
 	}
 
-	if requestData.TorrentID > 999999999 {
+	if requestData.TorrentID > 999_999_999 {
 		errMsg := fmt.Sprintf("invalid torrent ID: %d", requestData.TorrentID)
 		log.Debug().Msg(errMsg)
 		return fmt.Errorf(errMsg)
 	}
 
-	if requestData.REDKey != "" && len(requestData.REDKey) > 42 {
+	if len(requestData.REDKey) > 42 {
 		errMsg := "REDKey is too long"
 		log.Debug().Msg(errMsg)
 		return fmt.Errorf(errMsg)
 	}
 
-	if requestData.OPSKey != "" && len(requestData.OPSKey) > 120 {
+	if len(requestData.OPSKey) > 120 {
 		errMsg := "OPSKey is too long"
 		log.Debug().Msg(errMsg)
 		return fmt.Errorf(errMsg)
@@ -60,7 +56,7 @@ func validateRequestData(requestData *RequestData) error {
 	}
 
 	if requestData.MaxSize > 0 && requestData.MinSize > requestData.MaxSize {
-		errMsg := "minsize cannot be greater than maxsize"
+		errMsg := "minSize cannot be greater than maxSize"
 		log.Debug().Msg(errMsg)
 		return fmt.Errorf(errMsg)
 	}
@@ -88,7 +84,6 @@ func validateRequestData(requestData *RequestData) error {
 	return nil
 }
 
-// checks if a given indexer string is valid or not.
 func validateIndexer(indexer string) error {
 	if indexer != "ops" && indexer != "redacted" {
 		if indexer == "" {

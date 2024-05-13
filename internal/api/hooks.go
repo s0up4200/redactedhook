@@ -9,31 +9,60 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// checks if the uploader is allowed based on the requestData.
-func hookUploader(requestData *RequestData, apiBase string) error {
+type RequestData struct {
+	REDUserID   int               `json:"red_user_id,omitempty"`
+	OPSUserID   int               `json:"ops_user_id,omitempty"`
+	TorrentID   int               `json:"torrent_id,omitempty"`
+	REDKey      string            `json:"red_apikey,omitempty"`
+	OPSKey      string            `json:"ops_apikey,omitempty"`
+	MinRatio    float64           `json:"minratio,omitempty"`
+	MinSize     bytesize.ByteSize `json:"minsize,omitempty"`
+	MaxSize     bytesize.ByteSize `json:"maxsize,omitempty"`
+	Uploaders   string            `json:"uploaders,omitempty"`
+	RecordLabel string            `json:"record_labels,omitempty"`
+	Mode        string            `json:"mode,omitempty"`
+	Indexer     string            `json:"indexer"`
+}
 
+type ResponseData struct {
+	Status   string `json:"status"`
+	Error    string `json:"error"`
+	Response struct {
+		Username string `json:"username"`
+		Stats    struct {
+			Ratio float64 `json:"ratio"`
+		} `json:"stats"`
+		Group struct {
+			Name      string `json:"name"`
+			MusicInfo struct {
+				Artists []struct {
+					ID   int    `json:"id"`
+					Name string `json:"name"`
+				} `json:"artists"`
+			} `json:"musicInfo"`
+		} `json:"group"`
+		Torrent *struct {
+			Username        string `json:"username"`
+			Size            int64  `json:"size"`
+			RecordLabel     string `json:"remasterRecordLabel"`
+			ReleaseName     string `json:"filePath"`
+			CatalogueNumber string `json:"remasterCatalogueNumber"`
+		} `json:"torrent"`
+	} `json:"response"`
+}
+
+func hookUploader(requestData *RequestData, apiBase string) error {
 	torrentData, err := fetchResponseData(requestData, requestData.TorrentID, "torrent", apiBase)
 	if err != nil {
 		return err
 	}
 
 	username := torrentData.Response.Torrent.Username
-	usernames := strings.Split(requestData.Uploaders, ",")
-	for i, uname := range usernames {
-		usernames[i] = strings.TrimSpace(uname)
-	}
+	usernames := parseAndTrimList(requestData.Uploaders)
 
-	usernamesStr := strings.Join(usernames, ", ")
-	log.Trace().Msgf("[%s] Requested uploaders [%s]: %s", requestData.Indexer, requestData.Mode, usernamesStr)
+	log.Trace().Msgf("[%s] Requested uploaders [%s]: %s", requestData.Indexer, requestData.Mode, strings.Join(usernames, ", "))
 
-	isListed := false
-	for _, uname := range usernames {
-		if uname == username {
-			isListed = true
-			break
-		}
-	}
-
+	isListed := stringInSlice(username, usernames)
 	if (requestData.Mode == "blacklist" && isListed) || (requestData.Mode == "whitelist" && !isListed) {
 		log.Debug().Msgf("[%s] Uploader (%s) is not allowed", requestData.Indexer, username)
 		return fmt.Errorf("uploader is not allowed")
@@ -41,7 +70,7 @@ func hookUploader(requestData *RequestData, apiBase string) error {
 	return nil
 }
 
-// checks if the record label is allowed based on the requestData.
+// hookRecordLabel checks if the record label is allowed based on the requestData.
 func hookRecordLabel(requestData *RequestData, apiBase string) error {
 	torrentData, err := fetchResponseData(requestData, requestData.TorrentID, "torrent", apiBase)
 	if err != nil {
@@ -51,25 +80,22 @@ func hookRecordLabel(requestData *RequestData, apiBase string) error {
 	recordLabel := strings.ToLower(strings.TrimSpace(html.UnescapeString(torrentData.Response.Torrent.RecordLabel)))
 	name := torrentData.Response.Group.Name
 
-	requestedRecordLabels := normalizeLabels(strings.Split(requestData.RecordLabel, ","))
+	requestedRecordLabels := parseAndTrimList(requestData.RecordLabel)
 	if recordLabel == "" {
 		log.Debug().Msgf("[%s] No record label found for release: %s", requestData.Indexer, name)
-		return fmt.Errorf("record label not allowed")
+		return fmt.Errorf("record label not found")
 	}
 
-	recordLabelsStr := strings.Join(requestedRecordLabels, ", ")
-	log.Trace().Msgf("[%s] Requested record labels: [%s]", requestData.Indexer, recordLabelsStr)
+	log.Trace().Msgf("[%s] Requested record labels: [%s]", requestData.Indexer, strings.Join(requestedRecordLabels, ", "))
 
-	isRecordLabelPresent := contains(requestedRecordLabels, recordLabel)
-	if !isRecordLabelPresent {
-		log.Debug().Msgf("[%s] The record label '%s' is not included in the requested record labels: [%s]", requestData.Indexer, recordLabel, recordLabelsStr)
+	if !stringInSlice(recordLabel, requestedRecordLabels) {
+		log.Debug().Msgf("[%s] The record label '%s' is not included in the requested record labels: [%s]", requestData.Indexer, recordLabel, strings.Join(requestedRecordLabels, ", "))
 		return fmt.Errorf("record label not allowed")
 	}
 
 	return nil
 }
 
-// checks if the torrent size is within the allowed range based on the requestData.
 func hookSize(requestData *RequestData, apiBase string) error {
 	torrentData, err := fetchResponseData(requestData, requestData.TorrentID, "torrent", apiBase)
 	if err != nil {
@@ -77,35 +103,27 @@ func hookSize(requestData *RequestData, apiBase string) error {
 	}
 
 	torrentSize := bytesize.ByteSize(torrentData.Response.Torrent.Size)
-	minSize := bytesize.ByteSize(requestData.MinSize)
-	maxSize := bytesize.ByteSize(requestData.MaxSize)
 
 	log.Trace().Msgf("[%s] Torrent size: %s, Requested size range: %s - %s", requestData.Indexer, torrentSize, requestData.MinSize, requestData.MaxSize)
 
-	if (requestData.MinSize != 0 && torrentSize < minSize) ||
-		(requestData.MaxSize != 0 && torrentSize > maxSize) {
-		log.Debug().Msgf("[%s] Torrent size %s is outside the requested size range: %s to %s", requestData.Indexer, torrentSize, minSize, maxSize)
+	if (requestData.MinSize != 0 && torrentSize < requestData.MinSize) ||
+		(requestData.MaxSize != 0 && torrentSize > requestData.MaxSize) {
+		log.Debug().Msgf("[%s] Torrent size %s is outside the requested size range: %s to %s", requestData.Indexer, torrentSize, requestData.MinSize, requestData.MaxSize)
 		return fmt.Errorf("torrent size is outside the requested size range")
 	}
 
 	return nil
-
 }
 
-// checks if the user ratio is above the minimum requirement based on the requestData.
 func hookRatio(requestData *RequestData, apiBase string) error {
-	userID := requestData.REDUserID
+	userID := getUserID(requestData)
 	minRatio := requestData.MinRatio
-	if requestData.Indexer == "ops" {
-		userID = requestData.OPSUserID
-	}
 
-	// Check for incomplete configuration
 	if userID == 0 || minRatio == 0 {
 		if userID != 0 || minRatio != 0 {
 			log.Warn().Msgf("[%s] Incomplete ratio check configuration: userID or minRatio is missing.", requestData.Indexer)
 		}
-		return nil // Exit early if either is zero, as the check cannot proceed
+		return nil
 	}
 
 	userData, err := fetchResponseData(requestData, userID, "user", apiBase)
@@ -124,4 +142,28 @@ func hookRatio(requestData *RequestData, apiBase string) error {
 	}
 
 	return nil
+}
+
+func parseAndTrimList(list string) []string {
+	items := strings.Split(list, ",")
+	for i, item := range items {
+		items[i] = strings.TrimSpace(item)
+	}
+	return items
+}
+
+func stringInSlice(str string, list []string) bool {
+	for _, item := range list {
+		if item == str {
+			return true
+		}
+	}
+	return false
+}
+
+func getUserID(requestData *RequestData) int {
+	if requestData.Indexer == "ops" {
+		return requestData.OPSUserID
+	}
+	return requestData.REDUserID
 }

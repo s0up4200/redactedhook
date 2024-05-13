@@ -1,28 +1,29 @@
 # RedactedHook
 
-RedactedHook is a webhook companion service for [autobrr](https://github.com/autobrr/autobrr) designed to check the names of uploaders, your ratio, and record labels associated with torrents on **Redacted** and **Orpheus**. It provides a simple and efficient way to validate if uploaders are blacklisted or whitelisted, to stop racing in case your ratio falls below a certain point, and to verify if a torrent's record label matches against a specified list.
+RedactedHook is a webhook companion service for autobrr designed to check the names of uploaders, your ratio, and record labels associated with torrents on Redacted and Orpheus. It provides a simple and efficient way to validate if uploaders are blacklisted or whitelisted, to stop racing in case your ratio falls below a certain point, and to verify if a torrent's record label matches against a specified list.
 
 ## Table of Contents
 
 - [Features](#features)
 - [Getting Started](#getting-started)
-  - [Warning](#warning)
-  - [Installation](#installation)
-    - [Docker](#docker)
-    - [Docker Compose](#docker-compose)
-    - [Using precompiled binaries](#using-precompiled-binaries)
-    - [Building from source](#building-from-source)
+- [Warning](#warning)
+- [Installation](#installation)
+  - [Docker](#docker)
+  - [Docker Compose](#docker-compose)
+  - [Using precompiled binaries](#using-precompiled-binaries)
+  - [Building from source](#building-from-source)
 - [Usage](#usage)
-  - [Config](#config)
-  - [Authorization](#authorization)
-  - [Payload](#payload)
+  - [Commands](#commands)
+- [Config](#config)
+- [Authorization](#authorization)
+- [Payload](#payload)
 
 ## Features
 
 - Verify if an uploader's name is on a provided whitelist or blacklist.
 - Check for record labels. Useful for grabbing torrents from a specific record label.
 - Check if a user's ratio meets a specified minimum value.
-- Check the torrentSize (Useful for not hitting the API from both autobrr and redactedhook)
+- Check the torrentSize (Useful for not hitting the API from both autobrr and redactedhook).
 - Easy to integrate with other applications via webhook.
 - Rate-limited to comply with tracker API request policies.
   - With a 5-minute data cache to reduce frequent API calls for the same data.
@@ -31,22 +32,22 @@ It was made with [autobrr](https://github.com/autobrr/autobrr) in mind.
 
 ## Getting Started
 
-### Warning
+## Warning
 
 > \[!IMPORTANT]
 >
 > Remember that autobrr also checks the RED/OPS API if you have min/max sizes set. This will result in you hitting the API 2x.
 > So for your own good, **only** set size checks in RedactedHook.
 
-### Installation
+## Installation
 
-#### Docker
+### Docker
 
 ```bash
 docker pull ghcr.io/s0up4200/redactedhook:latest
 ```
 
-#### Docker Compose
+### Docker Compose
 
 ```docker
 services:
@@ -61,8 +62,9 @@ services:
     #cap_drop:
     #  - ALL
     environment:
-      - REDACTEDHOOK__HOST=0.0.0.0 # binds to 127.0.0.1 by default
-      - REDACTEDHOOK__PORT=42135 # defaults to 42135
+      #- REDACTEDHOOK__HOST=127.0.0.1   # Override the host from config.toml
+      #- REDACTEDHOOK__PORT=42135       # Override the port from config.toml
+      #- REDACTEDHOOK__API_TOKEN=       # Override the api_token from config.toml
       - TZ=UTC
     ports:
       - "42135:42135"
@@ -71,41 +73,37 @@ services:
     restart: unless-stopped
 ```
 
-#### Using precompiled binaries
+### Using precompiled binaries
 
 Download the appropriate binary for your platform from the [releases](https://github.com/s0up4200/RedactedHook/releases/latest) page.
 
-#### Building from source
+### Building from source
 
 1. Clone the repository:
 
-    ```bash
-    git clone https://github.com/s0up4200/RedactedHook.git
-    ```
+```bash
+git clone https://github.com/s0up4200/RedactedHook.git
+```
 
 2. Navigate to the project directory:
 
-    ```bash
-    cd RedactedHook
-    ```
+```bash
+cd RedactedHook
+```
 
 3. Build the project:
 
-    ```go
-    go build
-    ```
-
-    or
-
-    ```shell
-    make build
-    ```
+```bash
+go build
+or
+make build
+```
 
 4. Run the compiled binary:
 
-    ```bash
-    ./bin/RedactedHook --config /path/to/config.toml # config flag not necessary if file is next to binary
-    ```
+```bash
+./bin/RedactedHook --config /path/to/config.toml # config flag not necessary if file is next to binary
+```
 
 ## Usage
 
@@ -120,17 +118,27 @@ Expected HTTP Status: 200
 
 You can check ratio, uploader (whitelist and blacklist), minsize, maxsize, and record labels in a single request, or separately.
 
-### Config
+### Commands
 
-Most of `requestData` can be set in `config.toml` to reduce the payload from autobrr.
+- `generate-apitoken`: Generate a new API token and print it.
+- `create-config`: Create a default configuration file.
+- `help`: Display this help message.
 
-Config can be created with: `redactedhook create-config`
+## Config
+
+Most of requestData can be set in config.toml to reduce the payload from autobrr.
+
+### Example config.toml
 
 ```toml
+[server]
+host = "127.0.0.1" # Server host
+port = 42135       # Server port
+
 [authorization]
 api_token = "" # generate with "redactedhook generate-apitoken"
 # the api_token needs to be set as a header for the webhook to work
-# eg. Header=X-API-Token asd987gsd98g7324kjh142kjh
+# eg. Header=X-API-Token=asd987gsd98g7324kjh142kjh
 
 [indexer_keys]
 #red_apikey = "" # generate in user settings, needs torrent and user privileges
@@ -164,7 +172,7 @@ maxage = 28                      # Max age in days to keep a log file
 compress = false                 # Whether to compress old log files
 ```
 
-### Authorization
+## Authorization
 
 API Token can be generated like this: `redactedhook generate-apitoken`
 
@@ -182,9 +190,9 @@ curl -X POST \
      http://127.0.0.1:42135/hook
 ```
 
-### Payload
+## Payload
 
-**The minimum required data to send with the webhook:**
+The minimum required data to send with the webhook:
 
 ```json
 {
@@ -193,26 +201,20 @@ curl -X POST \
 }
 ```
 
-Everything else can be set in the `config.toml`, but you can set them in the webhook as well, if you want to filter by different things in different filters.
+Everything else can be set in the config.toml, but you can set them in the webhook as well, if you want to filter by different things in different filters.
 
-`indexer` - `"{{ .Indexer | js }}"` this is the indexer that pushed the release within autobrr.
+- `indexer` - `"{{ .Indexer | js }}"` this is the indexer that pushed the release within autobrr.
+- `torrent_id` - `{{.TorrentID}}` this is the TorrentID of the pushed release within autobrr.
 
-`torrent_id` - `{{.TorrentID}}` this is the TorrentID of the pushed release within autobrr.
+### Additional Keys
 
-`red_user_id` is the number in the URL when you visit your profile.
-
-`ops_user_id` is the number in the URL when you visit your profile.
-
-`red_apikey` is your Redacted API key. Needs user and torrents privileges.
-
-`ops_apikey` is your Orpheus API key. Needs user and torrents privileges.
-
-`record_labels` is a comma-separated list of record labels to check against.
-
-`minsize` is the minimum allowed size you want to grab. Eg. `100MB`
-
-`maxsize` is the max allowed size you want to grab. Eg. `500MB`
-
-`uploaders` is a comma-separated list of uploaders to check against.
-
-`mode` is either blacklist or whitelist. If blacklist is used, the torrent will be stopped if the uploader is found in the list. If whitelist is used, the torrent will be stopped if the uploader is not found in the list.
+- `red_user_id` is the number in the URL when you visit your profile.
+- `ops_user_id` is the number in the URL when you visit your profile.
+- `red_apikey` is your Redacted API key. Needs user and torrents privileges.
+- `ops_apikey` is your Orpheus API key. Needs user and torrents privileges.
+- `record_labels` is a comma-separated list of record labels to check against.
+- `minsize` is the minimum allowed size you want to grab. Eg. 100MB
+- `maxsize` is the max allowed size you want to grab. Eg. 500MB
+- `uploaders` is a comma-separated list of uploaders to check against.
+- `mode` is either blacklist or whitelist. If blacklist is used, the torrent will be stopped if the uploader is found in the list. If whitelist is used, the torrent will be stopped if the uploader is not found in the list.
+  `

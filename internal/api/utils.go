@@ -4,54 +4,30 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
-// takes a slice of strings and returns a new slice with all the labels
-// converted to lowercase and trimmed of any leading or trailing whitespace.
-func normalizeLabels(labels []string) []string {
-	normalized := make([]string, len(labels))
-	for i, label := range labels {
-		normalized[i] = strings.ToLower(strings.TrimSpace(label))
-	}
-	return normalized
-}
-func contains(slice []string, val string) bool {
-	for _, item := range slice {
-		if item == val {
-			return true
-		}
-	}
-	return false
-}
-
-// returns the appropriate API key based on the indexer specified in the `requestData` parameter.
-func getAPIKey(requestData *RequestData) (string, error) {
+func setAuthorizationHeader(reqHeader *http.Header, requestData *RequestData) error {
+	var apiKey string
 	switch requestData.Indexer {
 	case "redacted":
-		return requestData.REDKey, nil
-	case "ops":
-		return requestData.OPSKey, nil
-	default:
-		return "", fmt.Errorf("invalid indexer: %s", requestData.Indexer)
-	}
-}
-
-// sets the Authorization header in an HTTP request header based on the indexer specified
-func setAuthorizationHeader(reqHeader *http.Header, requestData *RequestData) {
-	var apiKey string
-	if requestData.Indexer == "redacted" {
 		apiKey = requestData.REDKey
-	} else if requestData.Indexer == "ops" {
+	case "ops":
 		apiKey = requestData.OPSKey
+	default:
+		err := fmt.Errorf("invalid indexer: %s", requestData.Indexer)
+		log.Error().Err(err).Msg("Failed to set authorization header")
+		return err
 	}
 	reqHeader.Set("Authorization", apiKey)
+	return nil
 }
 
-// decodes a JSON payload from an HTTP request and stores it in a struct.
 func decodeJSONPayload(r *http.Request, requestData *RequestData) error {
+	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(requestData); err != nil {
-		return fmt.Errorf("invalid JSON payload")
+		return fmt.Errorf("invalid JSON payload: %w", err)
 	}
 	return nil
 }

@@ -3,8 +3,8 @@ services:
     container_name: redactedhook
     image: ghcr.io/s0up4200/redactedhook:latest
     #build:
-      #context: .
-      #dockerfile: Dockerfile
+    #  context: .
+    #  dockerfile: Dockerfile
     #runtime: runsc-ptrace
     #network_mode: bridge
     user: nobody
@@ -14,8 +14,9 @@ services:
     cap_drop:
       - ALL
     environment:
-      - REDACTEDHOOK__HOST=0.0.0.0 # binds to 127.0.0.1 by default
-      - REDACTEDHOOK__PORT=42135 # defaults to 42135
+      #- REDACTEDHOOK__HOST=127.0.0.1     # Override the host from config.toml
+      #- REDACTEDHOOK__PORT=42135       # Override the port from config.toml
+      #- REDACTEDHOOK__API_TOKEN=         # Override the API token from config.toml
       - TZ=UTC
     ports:
       - 127.0.0.1:42135:42135

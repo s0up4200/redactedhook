@@ -1,43 +1,48 @@
 package api
 
 import (
+	"github.com/inhies/go-bytesize"
 	"github.com/s0up4200/redactedhook/internal/config"
 )
 
-// checks if certain fields in the requestData struct are empty or zero,
-// and if so, it populates them with values from the cfg struct.
+// fallbackToConfig checks if certain fields in the requestData struct are empty or zero,
+// and if so, populates them with values from the cfg struct.
 func fallbackToConfig(requestData *RequestData) {
-	config := config.GetConfig()
+	cfg := config.GetConfig()
 
-	// Directly assign values from the global config if they are not set in requestData
-	if requestData.REDUserID == 0 {
-		requestData.REDUserID = config.UserIDs.REDUserID
+	setIfEmptyInt := func(field *int, value int) {
+		if *field == 0 {
+			*field = value
+		}
 	}
-	if requestData.OPSUserID == 0 {
-		requestData.OPSUserID = config.UserIDs.OPSUserID
+
+	setIfEmptyFloat64 := func(field *float64, value float64) {
+		if *field == 0 {
+			*field = value
+		}
 	}
-	if requestData.REDKey == "" {
-		requestData.REDKey = config.IndexerKeys.REDKey
+
+	setIfEmptyByteSize := func(field *bytesize.ByteSize, value bytesize.ByteSize) {
+		if *field == 0 {
+			*field = value
+		}
 	}
-	if requestData.OPSKey == "" {
-		requestData.OPSKey = config.IndexerKeys.OPSKey
+
+	setIfEmptyString := func(field *string, value string) {
+		if *field == "" {
+			*field = value
+		}
 	}
-	if requestData.MinRatio == 0 {
-		requestData.MinRatio = config.Ratio.MinRatio
-	}
-	if requestData.MinSize == 0 {
-		requestData.MinSize = config.ParsedSizes.MinSize
-	}
-	if requestData.MaxSize == 0 {
-		requestData.MaxSize = config.ParsedSizes.MaxSize
-	}
-	if requestData.Uploaders == "" {
-		requestData.Uploaders = config.Uploaders.Uploaders
-	}
-	if requestData.Mode == "" {
-		requestData.Mode = config.Uploaders.Mode
-	}
-	if requestData.RecordLabel == "" {
-		requestData.RecordLabel = config.RecordLabels.RecordLabels
-	}
+
+	// Fallback to config values if requestData fields are not set
+	setIfEmptyInt(&requestData.REDUserID, cfg.UserIDs.REDUserID)
+	setIfEmptyInt(&requestData.OPSUserID, cfg.UserIDs.OPSUserID)
+	setIfEmptyString(&requestData.REDKey, cfg.IndexerKeys.REDKey)
+	setIfEmptyString(&requestData.OPSKey, cfg.IndexerKeys.OPSKey)
+	setIfEmptyFloat64(&requestData.MinRatio, cfg.Ratio.MinRatio)
+	setIfEmptyByteSize(&requestData.MinSize, cfg.ParsedSizes.MinSize)
+	setIfEmptyByteSize(&requestData.MaxSize, cfg.ParsedSizes.MaxSize)
+	setIfEmptyString(&requestData.Uploaders, cfg.Uploaders.Uploaders)
+	setIfEmptyString(&requestData.Mode, cfg.Uploaders.Mode)
+	setIfEmptyString(&requestData.RecordLabel, cfg.RecordLabels.RecordLabels)
 }

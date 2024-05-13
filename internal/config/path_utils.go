@@ -8,10 +8,8 @@ import (
 )
 
 func isRunningInDocker() bool {
-	if _, err := os.Stat("/.dockerenv"); err == nil {
-		return true
-	}
-	return false
+	_, err := os.Stat("/.dockerenv")
+	return err == nil
 }
 
 func determineConfigFile(configPath string) string {
@@ -19,15 +17,13 @@ func determineConfigFile(configPath string) string {
 		return configPath
 	}
 
-	configDir := defaultConfigDir
+	var configDir string
 	if isRunningInDocker() {
-		// In Docker, default to the mapped volume directory
 		configDir = os.Getenv("XDG_CONFIG_HOME")
 		if configDir == "" {
 			configDir = "/redactedhook"
 		}
 	} else {
-		// For non-Docker, use the user's home directory with .config/redactedhook/
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to get user home directory")
@@ -36,11 +32,5 @@ func determineConfigFile(configPath string) string {
 	}
 
 	configFile := filepath.Join(configDir, defaultConfigFileName)
-
-	//// Ensure the config file exists
-	//if err := createConfigFileIfNotExist(configFile); err != nil {
-	//	log.Fatal().Err(err).Msg("Failed to create or verify config file")
-	//}
-
 	return configFile
 }

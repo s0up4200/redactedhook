@@ -14,6 +14,12 @@ type Config struct {
 	Uploaders     Uploaders    `mapstructure:"uploaders"`
 	RecordLabels  RecordLabels `mapstructure:"record_labels"`
 	Logs          Logs         `mapstructure:"logs"`
+	Server        Server       `mapstructure:"server"`
+}
+
+type Server struct {
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
 }
 
 type Authorization struct {

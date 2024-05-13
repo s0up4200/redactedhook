@@ -8,31 +8,32 @@ import (
 	"html"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"golang.org/x/time/rate"
 )
 
-// sends an HTTP GET request to an endpoint with an API key, applies a rate limiter, and unmarshals the response JSON into a target object.
-func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string, target interface{}) error {
+const (
+	APIEndpointBaseRedacted = "https://redacted.ch/ajax.php"
+	APIEndpointBaseOrpheus  = "https://orpheus.network/ajax.php"
+)
 
-	if !limiter.Allow() {
-		log.Warn().Msgf("%s: Too many requests", indexer)
-		return fmt.Errorf("rate limit exceeded for %s", indexer)
+func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string, target interface{}) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := limiter.Wait(ctx); err != nil {
+		log.Warn().Msgf("%s: Rate limit exceeded", indexer)
+		return fmt.Errorf("rate limit exceeded for %s: %w", indexer, err)
 	}
 
-	req, err := http.NewRequest("GET", endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Error creating HTTP request")
 		return err
 	}
 	req.Header.Set("Authorization", apiKey)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	req = req.WithContext(ctx)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -40,14 +41,6 @@ func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string,
 		return err
 	}
 	defer resp.Body.Close()
-
-	//dump, err := httputil.DumpResponse(resp, true)
-	//if err != nil {
-	//	log.Error().Err(err).Msg("Error dumping the response")
-	//	return err
-	//}
-	//
-	//fmt.Printf("HTTP Response:\n%s\n", dump)
 
 	if resp.StatusCode >= 400 {
 		errMsg := fmt.Sprintf("HTTP error: %d from %s", resp.StatusCode, endpoint)
@@ -57,7 +50,7 @@ func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string,
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Error().Err(err).Msg("fetchAPI error")
+		log.Error().Err(err).Msg("Error reading response body")
 		return err
 	}
 
@@ -73,24 +66,21 @@ func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string,
 	}
 
 	if responseData.Status != "success" {
-		//	log.Warn().Msgf("API error from %s: %s", indexer, responseData.Error)
 		return fmt.Errorf("API error from %s: %s", indexer, responseData.Error)
 	}
 
 	return nil
 }
 
-// initiates an API request with the given parameters and returns the response data or an error.
-func initiateAPIRequest(id int, action string, apiKey, apiBase, indexer string) (*ResponseData, error) {
-	limiter := getLimiter(indexer)
-	if limiter == nil {
-		return nil, fmt.Errorf("could not get rate limiter for indexer: %s", indexer)
+func initiateAPIRequest(id int, action, apiKey, apiBase, indexer string) (*ResponseData, error) {
+	limiter, err := getLimiter(indexer)
+	if err != nil {
+		return nil, fmt.Errorf("could not get rate limiter for indexer: %s, %w", indexer, err)
 	}
 
 	endpoint := fmt.Sprintf("%s?action=%s&id=%d", apiBase, action, id)
 	responseData := &ResponseData{}
-	err := makeRequest(endpoint, apiKey, limiter, indexer, responseData)
-	if err != nil {
+	if err := makeRequest(endpoint, apiKey, limiter, indexer, responseData); err != nil {
 		return nil, err
 	}
 
@@ -103,13 +93,9 @@ func initiateAPIRequest(id int, action string, apiKey, apiBase, indexer string) 
 	return responseData, nil
 }
 
-// fetches response data from an API, checks the cache first, and caches the response data for future use.
-func fetchResponseData(requestData *RequestData, id int, action string, apiBase string) (*ResponseData, error) {
-
-	// Check cache first
+func fetchResponseData(requestData *RequestData, id int, action, apiBase string) (*ResponseData, error) {
 	cacheKey := fmt.Sprintf("%sID %d", action, id)
-	cachedData, found := checkCache(cacheKey, requestData.Indexer)
-	if found {
+	if cachedData, found := checkCache(cacheKey, requestData.Indexer); found {
 		return cachedData, nil
 	}
 
@@ -120,21 +106,15 @@ func fetchResponseData(requestData *RequestData, id int, action string, apiBase 
 
 	responseData, err := initiateAPIRequest(id, action, apiKey, apiBase, requestData.Indexer)
 	if err != nil {
-		if strings.Contains(err.Error(), "rate limit exceeded") {
-			return nil, err
-		}
 		wrappedErr := fmt.Errorf("error fetching %s data for ID %d: %w", action, id, err)
 		log.Error().Err(wrappedErr).Msg("Data fetching")
 		return nil, wrappedErr
 	}
 
-	// Cache the response data
 	cacheResponseData(cacheKey, responseData)
-
 	return responseData, nil
 }
 
-// determines the API base endpoint based on the provided indexer.
 func determineAPIBase(indexer string) (string, error) {
 	switch indexer {
 	case "redacted":
@@ -142,6 +122,17 @@ func determineAPIBase(indexer string) (string, error) {
 	case "ops":
 		return APIEndpointBaseOrpheus, nil
 	default:
-		return "", fmt.Errorf("invalid path")
+		return "", fmt.Errorf("invalid indexer: %s", indexer)
+	}
+}
+
+func getAPIKey(requestData *RequestData) (string, error) {
+	switch requestData.Indexer {
+	case "redacted":
+		return requestData.REDKey, nil
+	case "ops":
+		return requestData.OPSKey, nil
+	default:
+		return "", errors.New("invalid indexer")
 	}
 }
