@@ -6,3 +6,6 @@ redactedhook/
 __debug_bin
 .RedactedHook
 .DS_Store
+
+## tests
+internal/config/testconfig_updated.toml
