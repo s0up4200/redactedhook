@@ -34,7 +34,6 @@ func fallbackToConfig(requestData *RequestData) {
 		}
 	}
 
-	// Fallback to config values if requestData fields are not set
 	setIfEmptyInt(&requestData.REDUserID, cfg.UserIDs.REDUserID)
 	setIfEmptyInt(&requestData.OPSUserID, cfg.UserIDs.OPSUserID)
 	setIfEmptyString(&requestData.REDKey, cfg.IndexerKeys.REDKey)
