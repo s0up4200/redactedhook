@@ -97,7 +97,6 @@ func initiateAPIRequest(id int, action, apiKey, apiBase, indexer string) (*Respo
 func fetchResponseData(requestData *RequestData, id int, action, apiBase string) (*ResponseData, error) {
 	cacheKey := fmt.Sprintf("%sID %d", action, id)
 	if cachedData, found := checkCache(cacheKey, requestData.Indexer); found {
-		log.Trace().Msgf("[%s] Using cached data for key: %s", requestData.Indexer, cacheKey)
 		return cachedData, nil
 	}
 
