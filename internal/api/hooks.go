@@ -72,6 +72,9 @@ func hookUploader(requestData *RequestData, apiBase string) error {
 
 // hookRecordLabel checks if the record label is allowed based on the requestData.
 func hookRecordLabel(requestData *RequestData, apiBase string) error {
+	requestedRecordLabels := parseAndTrimList(requestData.RecordLabel)
+	log.Trace().Msgf("[%s] Requested record labels: [%s]", requestData.Indexer, strings.Join(requestedRecordLabels, ", "))
+
 	torrentData, err := fetchResponseData(requestData, requestData.TorrentID, "torrent", apiBase)
 	if err != nil {
 		return err
@@ -80,13 +83,10 @@ func hookRecordLabel(requestData *RequestData, apiBase string) error {
 	recordLabel := strings.ToLower(strings.TrimSpace(html.UnescapeString(torrentData.Response.Torrent.RecordLabel)))
 	name := torrentData.Response.Group.Name
 
-	requestedRecordLabels := parseAndTrimList(requestData.RecordLabel)
 	if recordLabel == "" {
 		log.Debug().Msgf("[%s] No record label found for release: %s", requestData.Indexer, name)
 		return fmt.Errorf("record label not found")
 	}
-
-	log.Trace().Msgf("[%s] Requested record labels: [%s]", requestData.Indexer, strings.Join(requestedRecordLabels, ", "))
 
 	if !stringInSlice(recordLabel, requestedRecordLabels) {
 		log.Debug().Msgf("[%s] The record label '%s' is not included in the requested record labels: [%s]", requestData.Indexer, recordLabel, strings.Join(requestedRecordLabels, ", "))
