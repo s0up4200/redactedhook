@@ -113,18 +113,35 @@ func writeHTTPError(w http.ResponseWriter, err error, statusCode int) {
 }
 
 func handleErrors(w http.ResponseWriter, err error) {
-	if serr, ok := err.(*statusError); ok {
-		if strings.Contains(serr.Error(), "invalid JSON response") {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		} else if handleHTTPErrorWithStatus(w, serr.Error()) {
-			return
-		} else {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
+	if err == nil {
+		return
 	}
-	http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	switch {
+	case strings.Contains(err.Error(), "invalid JSON response"):
+		http.Error(w, "invalid JSON response", http.StatusInternalServerError)
+
+	case strings.Contains(err.Error(), "record label not found"):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+
+	case strings.Contains(err.Error(), "record label not allowed"):
+		http.Error(w, err.Error(), http.StatusForbidden)
+
+	case strings.Contains(err.Error(), "uploader is not allowed"):
+		http.Error(w, err.Error(), http.StatusForbidden)
+
+	case strings.Contains(err.Error(), "torrent size is outside the requested size range"):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+
+	case strings.Contains(err.Error(), "returned ratio is below minimum requirement"):
+		http.Error(w, err.Error(), http.StatusForbidden)
+
+	case handleHTTPErrorWithStatus(w, err.Error()):
+
+	default:
+		log.Error().Err(err).Msg("Unhandled error")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 func handleHTTPErrorWithStatus(w http.ResponseWriter, errMsg string) bool {
