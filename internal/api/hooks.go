@@ -70,7 +70,6 @@ func hookUploader(requestData *RequestData, apiBase string) error {
 	return nil
 }
 
-// hookRecordLabel checks if the record label is allowed based on the requestData.
 func hookRecordLabel(requestData *RequestData, apiBase string) error {
 	requestedRecordLabels := parseAndTrimList(requestData.RecordLabel)
 	log.Trace().Msgf("[%s] Requested record labels: [%s]", requestData.Indexer, strings.Join(requestedRecordLabels, ", "))

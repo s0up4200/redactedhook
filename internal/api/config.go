@@ -5,43 +5,45 @@ import (
 	"github.com/s0up4200/redactedhook/internal/config"
 )
 
-// fallbackToConfig checks if certain fields in the requestData struct are empty or zero,
-// and if so, populates them with values from the cfg struct.
+// fallbackToConfig prioritizes webhook data over config data.
+// If webhook data is present, it overwrites the existing config data.
 func fallbackToConfig(requestData *RequestData) {
 	cfg := config.GetConfig()
 
-	setIfEmptyInt := func(field *int, value int) {
-		if *field == 0 {
-			*field = value
+	// Helper functions to set fields, prioritizing webhook data if present
+	setInt := func(webhookField *int, configValue int) {
+		if *webhookField == 0 {
+			*webhookField = configValue
 		}
 	}
 
-	setIfEmptyFloat64 := func(field *float64, value float64) {
-		if *field == 0 {
-			*field = value
+	setFloat64 := func(webhookField *float64, configValue float64) {
+		if *webhookField == 0 {
+			*webhookField = configValue
 		}
 	}
 
-	setIfEmptyByteSize := func(field *bytesize.ByteSize, value bytesize.ByteSize) {
-		if *field == 0 {
-			*field = value
+	setByteSize := func(webhookField *bytesize.ByteSize, configValue bytesize.ByteSize) {
+		if *webhookField == 0 {
+			*webhookField = configValue
 		}
 	}
 
-	setIfEmptyString := func(field *string, value string) {
-		if *field == "" {
-			*field = value
+	setString := func(webhookField *string, configValue string) {
+		if *webhookField == "" {
+			*webhookField = configValue
 		}
 	}
 
-	setIfEmptyInt(&requestData.REDUserID, cfg.UserIDs.REDUserID)
-	setIfEmptyInt(&requestData.OPSUserID, cfg.UserIDs.OPSUserID)
-	setIfEmptyString(&requestData.REDKey, cfg.IndexerKeys.REDKey)
-	setIfEmptyString(&requestData.OPSKey, cfg.IndexerKeys.OPSKey)
-	setIfEmptyFloat64(&requestData.MinRatio, cfg.Ratio.MinRatio)
-	setIfEmptyByteSize(&requestData.MinSize, cfg.ParsedSizes.MinSize)
-	setIfEmptyByteSize(&requestData.MaxSize, cfg.ParsedSizes.MaxSize)
-	setIfEmptyString(&requestData.Uploaders, cfg.Uploaders.Uploaders)
-	setIfEmptyString(&requestData.Mode, cfg.Uploaders.Mode)
-	setIfEmptyString(&requestData.RecordLabel, cfg.RecordLabels.RecordLabels)
+	// Check and set the fields, ensuring webhook data takes priority if present
+	setInt(&requestData.REDUserID, cfg.UserIDs.REDUserID)
+	setInt(&requestData.OPSUserID, cfg.UserIDs.OPSUserID)
+	setString(&requestData.REDKey, cfg.IndexerKeys.REDKey)
+	setString(&requestData.OPSKey, cfg.IndexerKeys.OPSKey)
+	setFloat64(&requestData.MinRatio, cfg.Ratio.MinRatio)
+	setByteSize(&requestData.MinSize, cfg.ParsedSizes.MinSize)
+	setByteSize(&requestData.MaxSize, cfg.ParsedSizes.MaxSize)
+	setString(&requestData.Uploaders, cfg.Uploaders.Uploaders)
+	setString(&requestData.Mode, cfg.Uploaders.Mode)
+	setString(&requestData.RecordLabel, cfg.RecordLabels.RecordLabels)
 }
