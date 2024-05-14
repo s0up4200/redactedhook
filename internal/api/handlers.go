@@ -1,9 +1,8 @@
 package api
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/s0up4200/redactedhook/internal/config"
@@ -14,6 +13,15 @@ const (
 	StatusLabelNotAllowed    = http.StatusIMUsed + 2
 	StatusSizeNotAllowed     = http.StatusIMUsed + 3
 	StatusRatioNotAllowed    = http.StatusIMUsed
+)
+
+const (
+	ErrInvalidJSONResponse   = "invalid JSON response"
+	ErrRecordLabelNotFound   = "record label not found"
+	ErrRecordLabelNotAllowed = "record label not allowed"
+	ErrUploaderNotAllowed    = "uploader is not allowed"
+	ErrSizeNotAllowed        = "torrent size is outside the requested size range"
+	ErrRatioBelowMinimum     = "returned ratio is below minimum requirement"
 )
 
 func WebhookHandler(w http.ResponseWriter, r *http.Request) {
@@ -70,42 +78,29 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 func runHooks(requestData *RequestData, apiBase string) error {
 	if requestData.TorrentID != 0 && (requestData.MinSize != 0 || requestData.MaxSize != 0) {
 		if err := hookSize(requestData, apiBase); err != nil {
-			return errWithStatus(err, StatusSizeNotAllowed)
+			return errors.New(ErrSizeNotAllowed)
 		}
 	}
 
 	if requestData.TorrentID != 0 && requestData.Uploaders != "" {
 		if err := hookUploader(requestData, apiBase); err != nil {
-			return errWithStatus(err, StatusUploaderNotAllowed)
+			return errors.New(ErrUploaderNotAllowed)
 		}
 	}
 
 	if requestData.TorrentID != 0 && requestData.RecordLabel != "" {
 		if err := hookRecordLabel(requestData, apiBase); err != nil {
-			return errWithStatus(err, StatusLabelNotAllowed)
+			return errors.New(ErrRecordLabelNotAllowed)
 		}
 	}
 
 	if requestData.MinRatio != 0 {
 		if err := hookRatio(requestData, apiBase); err != nil {
-			return errWithStatus(err, StatusRatioNotAllowed)
+			return errors.New(ErrRatioBelowMinimum)
 		}
 	}
 
 	return nil
-}
-
-type statusError struct {
-	err        error
-	statusCode int
-}
-
-func (se *statusError) Error() string {
-	return se.err.Error()
-}
-
-func errWithStatus(err error, statusCode int) error {
-	return &statusError{err: err, statusCode: statusCode}
 }
 
 func writeHTTPError(w http.ResponseWriter, err error, statusCode int) {
@@ -117,40 +112,27 @@ func handleErrors(w http.ResponseWriter, err error) {
 		return
 	}
 
-	switch {
-	case strings.Contains(err.Error(), "invalid JSON response"):
-		http.Error(w, "invalid JSON response", http.StatusInternalServerError)
+	switch err.Error() {
+	case ErrInvalidJSONResponse:
+		http.Error(w, ErrInvalidJSONResponse, http.StatusInternalServerError)
 
-	case strings.Contains(err.Error(), "record label not found"):
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	case ErrRecordLabelNotFound:
+		http.Error(w, ErrRecordLabelNotFound, http.StatusBadRequest)
 
-	case strings.Contains(err.Error(), "record label not allowed"):
-		http.Error(w, err.Error(), http.StatusForbidden)
+	case ErrRecordLabelNotAllowed:
+		http.Error(w, ErrRecordLabelNotAllowed, http.StatusForbidden)
 
-	case strings.Contains(err.Error(), "uploader is not allowed"):
-		http.Error(w, err.Error(), http.StatusForbidden)
+	case ErrUploaderNotAllowed:
+		http.Error(w, ErrUploaderNotAllowed, http.StatusForbidden)
 
-	case strings.Contains(err.Error(), "torrent size is outside the requested size range"):
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	case ErrSizeNotAllowed:
+		http.Error(w, ErrSizeNotAllowed, http.StatusBadRequest)
 
-	case strings.Contains(err.Error(), "returned ratio is below minimum requirement"):
-		http.Error(w, err.Error(), http.StatusForbidden)
-
-	case handleHTTPErrorWithStatus(w, err.Error()):
+	case ErrRatioBelowMinimum:
+		http.Error(w, ErrRatioBelowMinimum, http.StatusForbidden)
 
 	default:
 		log.Error().Err(err).Msg("Unhandled error")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
-}
-
-func handleHTTPErrorWithStatus(w http.ResponseWriter, errMsg string) bool {
-	if strings.HasPrefix(errMsg, "HTTP error:") {
-		var statusCode int
-		if _, scanErr := fmt.Sscanf(errMsg, "HTTP error: %d", &statusCode); scanErr == nil && statusCode != 0 {
-			http.Error(w, errMsg, statusCode)
-			return true
-		}
-	}
-	return false
 }
