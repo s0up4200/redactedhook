@@ -1,44 +1,57 @@
 package api
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/s0up4200/redactedhook/internal/config"
 )
 
-// handles webhooks: auth, decode payload, validate, respond 200.
-func WebhookHandler(w http.ResponseWriter, r *http.Request) {
-	var requestData RequestData
+const (
+	StatusUploaderNotAllowed = http.StatusIMUsed + 1
+	StatusLabelNotAllowed    = http.StatusIMUsed + 2
+	StatusSizeNotAllowed     = http.StatusIMUsed + 3
+	StatusRatioNotAllowed    = http.StatusIMUsed
+)
 
+const (
+	ErrInvalidJSONResponse   = "invalid JSON response"
+	ErrRecordLabelNotFound   = "record label not found"
+	ErrRecordLabelNotAllowed = "record label not allowed"
+	ErrUploaderNotAllowed    = "uploader is not allowed"
+	ErrSizeNotAllowed        = "torrent size is outside the requested size range"
+	ErrRatioBelowMinimum     = "returned ratio is below minimum requirement"
+)
+
+func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	cfg := config.GetConfig()
+	var requestData RequestData
 	fallbackToConfig(&requestData)
 
 	if err := verifyAPIKey(r.Header.Get("X-API-Token"), cfg.Authorization.APIToken); err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		writeHTTPError(w, err, http.StatusUnauthorized)
 		return
 	}
 
 	if err := validateRequestMethod(r.Method); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeHTTPError(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if err := decodeJSONPayload(r, &requestData); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeHTTPError(w, err, http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
 	if err := validateIndexer(requestData.Indexer); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeHTTPError(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if err := validateRequestData(&requestData); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeHTTPError(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -46,68 +59,80 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	apiBase, err := determineAPIBase(requestData.Indexer)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		writeHTTPError(w, err, http.StatusNotFound)
 		return
 	}
 
 	reqHeader := make(http.Header)
 	setAuthorizationHeader(&reqHeader, &requestData)
 
-	// Call hooks
+	if hookError := runHooks(&requestData, apiBase); hookError != nil {
+		handleErrors(w, hookError)
+		return
+	}
 
+	w.WriteHeader(http.StatusOK)
+	log.Info().Msgf("[%s] Conditions met, responding with status 200", requestData.Indexer)
+}
+
+func runHooks(requestData *RequestData, apiBase string) error {
 	if requestData.TorrentID != 0 && (requestData.MinSize != 0 || requestData.MaxSize != 0) {
-		if err := hookSize(&requestData, apiBase); err != nil {
-			handleErrors(w, err, StatusSizeNotAllowed)
-			return
-
+		if err := hookSize(requestData, apiBase); err != nil {
+			return errors.New(ErrSizeNotAllowed)
 		}
 	}
 
 	if requestData.TorrentID != 0 && requestData.Uploaders != "" {
-		if err := hookUploader(&requestData, apiBase); err != nil {
-			handleErrors(w, err, StatusUploaderNotAllowed)
-			return
-
+		if err := hookUploader(requestData, apiBase); err != nil {
+			return errors.New(ErrUploaderNotAllowed)
 		}
 	}
 
 	if requestData.TorrentID != 0 && requestData.RecordLabel != "" {
-		if err := hookRecordLabel(&requestData, apiBase); err != nil {
-			handleErrors(w, err, StatusLabelNotAllowed)
-			return
+		if err := hookRecordLabel(requestData, apiBase); err != nil {
+			return errors.New(ErrRecordLabelNotAllowed)
 		}
 	}
 
 	if requestData.MinRatio != 0 {
-		if err := hookRatio(&requestData, apiBase); err != nil {
-			handleErrors(w, err, StatusRatioNotAllowed)
-			return
-
+		if err := hookRatio(requestData, apiBase); err != nil {
+			return errors.New(ErrRatioBelowMinimum)
 		}
 	}
 
-	w.WriteHeader(http.StatusOK) // HTTP status code 200
-	log.Info().Msgf("[%s] Conditions met, responding with status 200", requestData.Indexer)
+	return nil
 }
 
-func handleErrors(w http.ResponseWriter, err error, defaultStatusCode int) {
-	if strings.Contains(err.Error(), "invalid JSON response") {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return // We're done here, no need to continue.
+func writeHTTPError(w http.ResponseWriter, err error, statusCode int) {
+	http.Error(w, err.Error(), statusCode)
+}
+
+func handleErrors(w http.ResponseWriter, err error) {
+	if err == nil {
+		return
 	}
 
-	if strings.HasPrefix(err.Error(), "HTTP error:") {
-		// Extract the status code from the error message
-		var statusCode int
-		_, scanErr := fmt.Sscanf(err.Error(), "HTTP error: %d", &statusCode)
-		if scanErr == nil && statusCode != 0 {
-			http.Error(w, err.Error(), statusCode)
-			return // We're done here, too.
-		}
-		// Fallback to internal server error if status code extraction fails
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return // Still done.
-	}
+	switch err.Error() {
+	case ErrInvalidJSONResponse:
+		http.Error(w, ErrInvalidJSONResponse, http.StatusInternalServerError)
 
-	http.Error(w, err.Error(), defaultStatusCode)
+	case ErrRecordLabelNotFound:
+		http.Error(w, ErrRecordLabelNotFound, http.StatusBadRequest)
+
+	case ErrRecordLabelNotAllowed:
+		http.Error(w, ErrRecordLabelNotAllowed, http.StatusForbidden)
+
+	case ErrUploaderNotAllowed:
+		http.Error(w, ErrUploaderNotAllowed, http.StatusForbidden)
+
+	case ErrSizeNotAllowed:
+		http.Error(w, ErrSizeNotAllowed, http.StatusBadRequest)
+
+	case ErrRatioBelowMinimum:
+		http.Error(w, ErrRatioBelowMinimum, http.StatusForbidden)
+
+	default:
+		log.Error().Err(err).Msg("Unhandled error")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }

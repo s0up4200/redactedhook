@@ -1,27 +1,70 @@
 package api
 
 import (
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
 )
 
-var cache = make(map[string]CacheItem) // keyed by indexer
+const (
+	cacheExpiryDuration  = 5 * time.Minute
+	cacheCleanupInterval = 10 * time.Minute
+)
 
-// stores the responseData in cache with the specified cacheKey and updates the LastFetched timestamp.
+type CacheItem struct {
+	Data        *ResponseData
+	LastFetched time.Time
+}
+
+var (
+	cache     = make(map[string]CacheItem)
+	cacheLock sync.RWMutex
+)
+
+func init() {
+	// Start a background goroutine to periodically clean up expired cache entries.
+	go startCacheCleanup()
+}
+
 func cacheResponseData(cacheKey string, responseData *ResponseData) {
+	cacheLock.Lock()
+	defer cacheLock.Unlock()
 	cache[cacheKey] = CacheItem{
 		Data:        responseData,
 		LastFetched: time.Now(),
 	}
 }
 
-// checks if there is cached data for a given cache key and indexer,
-// and returns the cached data if it exists and is not expired.
-func checkCache(cacheKey string, indexer string) (*ResponseData, bool) {
-	if cached, ok := cache[cacheKey]; ok && time.Since(cached.LastFetched) < 5*time.Minute {
-		log.Trace().Msgf("[%s] Using cached data for %s", indexer, cacheKey)
-		return cached.Data, true
+func checkCache(cacheKey, indexer string) (*ResponseData, bool) {
+	cacheLock.RLock()
+	defer cacheLock.RUnlock()
+
+	if cached, ok := cache[cacheKey]; ok {
+		if time.Since(cached.LastFetched) < cacheExpiryDuration {
+			log.Trace().Msgf("[%s] Using cached data for %s", indexer, cacheKey)
+			return cached.Data, true
+		}
 	}
 	return nil, false
+}
+
+func startCacheCleanup() {
+	for {
+		time.Sleep(cacheCleanupInterval)
+		removeExpiredCacheEntries()
+	}
+}
+
+func removeExpiredCacheEntries() {
+	cacheLock.Lock()
+	defer cacheLock.Unlock()
+
+	now := time.Now()
+	for key, item := range cache {
+		if now.Sub(item.LastFetched) >= cacheExpiryDuration {
+			delete(cache, key)
+			//log.Trace().Msgf("Removed expired cache entry for %s", key)
+		}
+	}
 }

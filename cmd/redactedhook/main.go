@@ -19,30 +19,39 @@ import (
 )
 
 var (
-	version   string
-	commit    string
-	buildDate string
+	version   = "dev"
+	commit    = "none"
+	buildDate = "unknown"
 )
 
 const (
-	path             = "/hook"
-	EnvServerAddress = "REDACTEDHOOK__HOST"
-	EnvServerPort    = "REDACTEDHOOK__PORT"
+	path        = "/hook"
+	tokenLength = 16
 )
 
-func generateAPIToken(length int) string {
-	b := make([]byte, length)
+func generateAPIToken() string {
+	b := make([]byte, tokenLength)
 	if _, err := rand.Read(b); err != nil {
 		log.Fatal().Err(err).Msg("Failed to generate API key")
-		return ""
 	}
 	apiKey := hex.EncodeToString(b)
-	// codeql-ignore-next-line: go/clear-text-logging-of-sensitive-information
 	fmt.Fprintf(os.Stdout, "API Token: %v, copy and paste into your config.toml\n", apiKey)
 	return apiKey
 }
 
-func flagCommands() (string, bool) {
+func printHelp() {
+	fmt.Println("Usage: redactedhook [options] [command]")
+	fmt.Println()
+	fmt.Println("Options:")
+	flag.PrintDefaults()
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println("  generate-apitoken  Generate a new API token and print it.")
+	fmt.Println("  create-config      Create a default configuration file.")
+	fmt.Println("  help               Display this help message.")
+}
+
+func parseFlags() (string, bool) {
 	var configPath string
 	flag.StringVar(&configPath, "config", "config.toml", "Path to the configuration file")
 	flag.Parse()
@@ -50,71 +59,78 @@ func flagCommands() (string, bool) {
 	if len(flag.Args()) > 0 {
 		switch flag.Arg(0) {
 		case "generate-apitoken":
-			return generateAPIToken(16), true
+			generateAPIToken()
+			return "", true
 		case "create-config":
-			return config.CreateConfigFile(), true
+			config.CreateConfigFile()
+			return "", true
+		case "help":
+			printHelp()
+			return "", true
 		default:
-			log.Fatal().Msgf("Unknown command: %s", flag.Arg(0))
+			log.Fatal().Msgf("Unknown command: %s. Use 'redactedhook help' to see available commands.", flag.Arg(0))
 		}
 	}
 	return configPath, false
 }
 
 func getEnv(key, defaultValue string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
+	if value, exists := os.LookupEnv(key); exists {
+		return value
 	}
-	return value
+	return defaultValue
 }
 
-func startHTTPServer(address, port string) {
-	server := &http.Server{Addr: address + ":" + port}
+func initLogger() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05"})
+}
+
+func startHTTPServer(address string) {
+	server := &http.Server{Addr: address}
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal().Err(err).Msg("Failed to start server")
+			log.Fatal().Err(err).Msg("HTTP server crashed")
 		}
 	}()
 
-	log.Info().Msgf("Starting server on %s", address+":"+port)
+	log.Info().Msgf("Starting server on %s", address)
 	log.Info().Msgf("Version: %s, Commit: %s, Build Date: %s", version, commit, buildDate)
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	<-c
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt)
+	<-sig
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
 	if err := server.Shutdown(ctx); err != nil {
 		log.Error().Err(err).Msg("Server shutdown failed")
-	} else {
-		log.Info().Msg("Server gracefully stopped")
 	}
 }
 
 func main() {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05", NoColor: false})
+	initLogger()
 
-	configPath, isCommandExecuted := flagCommands()
+	configPath, isCommandExecuted := parseFlags()
 	if isCommandExecuted {
 		return
 	}
 
 	config.InitConfig(configPath)
 
-	err := config.ValidateConfig()
-	if err != nil {
+	if err := config.ValidateConfig(); err != nil {
 		log.Fatal().Err(err).Msg("Invalid configuration")
-	} else {
-		log.Debug().Msg("Configuration is valid.")
 	}
 
 	http.HandleFunc(path, api.WebhookHandler)
 
-	address := getEnv(EnvServerAddress, "127.0.0.1")
-	port := getEnv(EnvServerPort, "42135")
+	host := getEnv("REDACTEDHOOK__HOST", config.GetConfig().Server.Host)
+	port := getEnv("REDACTEDHOOK__PORT", fmt.Sprintf("%d", config.GetConfig().Server.Port))
+	apiToken := getEnv("REDACTEDHOOK__API_TOKEN", config.GetConfig().Authorization.APIToken)
 
-	startHTTPServer(address, port)
+	config.GetConfig().Authorization.APIToken = apiToken
+
+	address := fmt.Sprintf("%s:%s", host, port)
+
+	startHTTPServer(address)
 }

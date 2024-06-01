@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -17,15 +18,15 @@ func init() {
 	orpheusLimiter = rate.NewLimiter(rate.Every(10*time.Second), 5)
 }
 
-// returns a rate limiter based on the provided indexer string.
-func getLimiter(indexer string) *rate.Limiter {
+func getLimiter(indexer string) (*rate.Limiter, error) {
 	switch indexer {
 	case "redacted":
-		return redactedLimiter
+		return redactedLimiter, nil
 	case "ops":
-		return orpheusLimiter
+		return orpheusLimiter, nil
 	default:
-		log.Error().Msgf("Invalid indexer: %s", indexer)
-		return nil
+		err := fmt.Errorf("invalid indexer: %s", indexer)
+		log.Error().Err(err).Msg("Failed to get rate limiter")
+		return nil, err
 	}
 }
