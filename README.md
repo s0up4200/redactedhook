@@ -137,8 +137,6 @@ port = 42135       # Server port
 
 [authorization]
 api_token = "" # generate with "redactedhook generate-apitoken"
-# the api_token needs to be set as a header for the webhook to work
-# eg. Header=X-API-Token=asd987gsd98g7324kjh142kjh
 
 [indexer_keys]
 #red_apikey = "" # generate in user settings, needs torrent and user privileges
