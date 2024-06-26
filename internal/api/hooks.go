@@ -146,7 +146,7 @@ func hookRatio(requestData *RequestData, apiBase string) error {
 func parseAndTrimList(list string) []string {
 	items := strings.Split(list, ",")
 	for i, item := range items {
-		items[i] = strings.TrimSpace(item)
+		items[i] = strings.ToLower(strings.TrimSpace(item))
 	}
 	return items
 }
