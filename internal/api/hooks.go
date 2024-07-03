@@ -57,7 +57,7 @@ func hookUploader(requestData *RequestData, apiBase string) error {
 		return err
 	}
 
-	username := torrentData.Response.Torrent.Username
+	username := strings.ToLower(torrentData.Response.Torrent.Username)
 	usernames := parseAndTrimList(requestData.Uploaders)
 
 	log.Trace().Msgf("[%s] Requested uploaders [%s]: %s", requestData.Indexer, requestData.Mode, strings.Join(usernames, ", "))
