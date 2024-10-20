@@ -5,45 +5,45 @@ import (
 	"github.com/s0up4200/redactedhook/internal/config"
 )
 
-// fallbackToConfig prioritizes webhook data over config data.
-// If webhook data is present, it overwrites the existing config data.
+type configField struct {
+	webhookField interface{}
+	configValue  interface{}
+}
+
 func fallbackToConfig(requestData *RequestData) {
 	cfg := config.GetConfig()
 
-	// Helper functions to set fields, prioritizing webhook data if present
-	setInt := func(webhookField *int, configValue int) {
-		if *webhookField == 0 {
-			*webhookField = configValue
-		}
+	fields := []configField{
+		{&requestData.REDUserID, cfg.UserIDs.REDUserID},
+		{&requestData.OPSUserID, cfg.UserIDs.OPSUserID},
+		{&requestData.REDKey, cfg.IndexerKeys.REDKey},
+		{&requestData.OPSKey, cfg.IndexerKeys.OPSKey},
+		{&requestData.MinRatio, cfg.Ratio.MinRatio},
+		{&requestData.MinSize, cfg.ParsedSizes.MinSize},
+		{&requestData.MaxSize, cfg.ParsedSizes.MaxSize},
+		{&requestData.Uploaders, cfg.Uploaders.Uploaders},
+		{&requestData.Mode, cfg.Uploaders.Mode},
+		{&requestData.RecordLabel, cfg.RecordLabels.RecordLabels},
 	}
 
-	setFloat64 := func(webhookField *float64, configValue float64) {
-		if *webhookField == 0 {
-			*webhookField = configValue
+	for _, field := range fields {
+		switch v := field.webhookField.(type) {
+		case *int:
+			if *v == 0 {
+				*v = field.configValue.(int)
+			}
+		case *float64:
+			if *v == 0 {
+				*v = field.configValue.(float64)
+			}
+		case *bytesize.ByteSize:
+			if *v == 0 {
+				*v = field.configValue.(bytesize.ByteSize)
+			}
+		case *string:
+			if *v == "" {
+				*v = field.configValue.(string)
+			}
 		}
 	}
-
-	setByteSize := func(webhookField *bytesize.ByteSize, configValue bytesize.ByteSize) {
-		if *webhookField == 0 {
-			*webhookField = configValue
-		}
-	}
-
-	setString := func(webhookField *string, configValue string) {
-		if *webhookField == "" {
-			*webhookField = configValue
-		}
-	}
-
-	// Check and set the fields, ensuring webhook data takes priority if present
-	setInt(&requestData.REDUserID, cfg.UserIDs.REDUserID)
-	setInt(&requestData.OPSUserID, cfg.UserIDs.OPSUserID)
-	setString(&requestData.REDKey, cfg.IndexerKeys.REDKey)
-	setString(&requestData.OPSKey, cfg.IndexerKeys.OPSKey)
-	setFloat64(&requestData.MinRatio, cfg.Ratio.MinRatio)
-	setByteSize(&requestData.MinSize, cfg.ParsedSizes.MinSize)
-	setByteSize(&requestData.MaxSize, cfg.ParsedSizes.MaxSize)
-	setString(&requestData.Uploaders, cfg.Uploaders.Uploaders)
-	setString(&requestData.Mode, cfg.Uploaders.Mode)
-	setString(&requestData.RecordLabel, cfg.RecordLabels.RecordLabels)
 }
