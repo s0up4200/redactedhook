@@ -127,8 +127,12 @@ func main() {
 	host := getEnv("REDACTEDHOOK__HOST", config.GetConfig().Server.Host)
 	port := getEnv("REDACTEDHOOK__PORT", fmt.Sprintf("%d", config.GetConfig().Server.Port))
 	apiToken := getEnv("REDACTEDHOOK__API_TOKEN", config.GetConfig().Authorization.APIToken)
+	redApiKey := getEnv("REDACTEDHOOK__RED_APIKEY", config.GetConfig().IndexerKeys.REDKey)
+	opsApiKey := getEnv("REDACTEDHOOK__OPS_APIKEY", config.GetConfig().IndexerKeys.OPSKey)
 
 	config.GetConfig().Authorization.APIToken = apiToken
+	config.GetConfig().IndexerKeys.REDKey = redApiKey
+	config.GetConfig().IndexerKeys.OPSKey = opsApiKey
 
 	address := fmt.Sprintf("%s:%s", host, port)
 
