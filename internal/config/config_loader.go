@@ -171,11 +171,20 @@ func ValidateConfig() error {
 	if apiToken == "" {
 		validationErrors = append(validationErrors, "Authorization API Token is required.")
 	}
-	if viper.IsSet("indexer_keys.red_apikey") && viper.GetString("indexer_keys.red_apikey") == "" {
+
+	redApiKey := viper.GetString("indexer_keys.red_apikey")
+	if envRedKey, exists := os.LookupEnv("REDACTEDHOOK__RED_APIKEY"); exists {
+		redApiKey = envRedKey
+	}
+	if redApiKey == "" {
 		validationErrors = append(validationErrors, "Indexer REDKey should not be empty")
 	}
 
-	if viper.IsSet("indexer_keys.ops_apikey") && viper.GetString("indexer_keys.ops_apikey") == "" {
+	opsApiKey := viper.GetString("indexer_keys.ops_apikey")
+	if envOpsKey, exists := os.LookupEnv("REDACTEDHOOK__OPS_APIKEY"); exists {
+		opsApiKey = envOpsKey
+	}
+	if opsApiKey == "" {
 		validationErrors = append(validationErrors, "Indexer OPSKey should not be empty")
 	}
 

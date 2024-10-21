@@ -65,6 +65,8 @@ services:
       #- REDACTEDHOOK__HOST=127.0.0.1   # Override the host from config.toml
       #- REDACTEDHOOK__PORT=42135       # Override the port from config.toml
       #- REDACTEDHOOK__API_TOKEN=       # Override the api_token from config.toml
+      #- REDACTEDHOOK__RED_APIKEY=      # Override the red api_key from config.toml
+      #- REDACTEDHOOK__OPS_APIKEY=      # Override the ops api_key from config.toml
       - TZ=UTC
     ports:
       - "42135:42135"
