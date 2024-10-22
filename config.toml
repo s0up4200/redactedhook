@@ -3,7 +3,7 @@ host = "127.0.0.1" # Server host
 port = 42135       # Server port
 
 [authorization]
-api_token = "" # generate with "redactedhook generate-apitoken"
+api_token = "ch4ng3this" # generate with "redactedhook generate-apitoken"
 
 [indexer_keys]
 #red_apikey = "" # generate in user settings, needs torrent and user privileges
