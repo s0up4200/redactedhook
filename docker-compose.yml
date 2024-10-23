@@ -2,9 +2,9 @@ services:
   redactedhook:
     container_name: redactedhook
     image: ghcr.io/s0up4200/redactedhook:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
+    #build:
+    #  context: .
+    #  dockerfile: Dockerfile
     #runtime: runsc-ptrace
     #network_mode: bridge
     user: nobody
