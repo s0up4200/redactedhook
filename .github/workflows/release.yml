@@ -42,9 +42,6 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    strategy:
-      matrix:
-        shard: [1, 2]  # Split tests into 2 shards for parallel execution
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,22 +65,21 @@ jobs:
       - name: Run Tests with Coverage
         run: |
           go run gotest.tools/gotestsum@latest \
-            --junitfile unit-tests-${{ matrix.shard }}.xml \
+            --junitfile unit-tests.xml \
             --format pkgname \
-            --shard ${{ matrix.shard }}/2 \
-            -- -coverprofile=coverage-${{ matrix.shard }}.out ./... -tags=integration
+            -- -coverprofile=coverage.out ./... -tags=integration
 
       - name: Test Summary
         uses: test-summary/action@v2
         with:
-          paths: "unit-tests-${{ matrix.shard }}.xml"
+          paths: "unit-tests.xml"
         if: always()
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-${{ matrix.shard }}
-          path: coverage-${{ matrix.shard }}.out
+          name: coverage-report
+          path: coverage.out
 
   goreleaserbuild:
     name: Build distribution binaries
