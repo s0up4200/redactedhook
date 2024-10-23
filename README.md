@@ -73,6 +73,11 @@ services:
     volumes:
       - ./:/redactedhook
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/redactedhook", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 ```
 
 ### Using precompiled binaries
