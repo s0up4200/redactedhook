@@ -1,13 +1,13 @@
 name: build
 
 on:
- push:
+  push:
     branches:
       - "main"
       - "develop"
     tags:
       - 'v*'
- pull_request:
+  pull_request:
 
 env:
   REGISTRY: ghcr.io
@@ -17,11 +17,34 @@ env:
 permissions:
   contents: write
   packages: write
+  security-events: write
 
 jobs:
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: go
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        shard: [1, 2]  # Split tests into 2 shards for parallel execution
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,19 +57,55 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Test
-        run: go run gotest.tools/gotestsum@latest --junitfile unit-tests.xml --format pkgname -- ./... -tags=integration
+      - name: Download Go modules
+        run: go mod download
+        
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: ./...
+          
+      - name: Run Tests with Coverage
+        run: |
+          go run gotest.tools/gotestsum@latest \
+            --junitfile unit-tests-${{ matrix.shard }}.xml \
+            --format pkgname \
+            --shard ${{ matrix.shard }}/2 \
+            -- -coverprofile=coverage-${{ matrix.shard }}.out ./... -tags=integration
 
       - name: Test Summary
         uses: test-summary/action@v2
         with:
-          paths: "unit-tests.xml"
+          paths: "unit-tests-${{ matrix.shard }}.xml"
         if: always()
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ matrix.shard }}
+          path: coverage-${{ matrix.shard }}.out
+
+  dependency-check:
+    name: Check Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Nancy
+        uses: sonatype-nexus-community/nancy-github-action@main
 
   goreleaserbuild:
     name: Build distribution binaries
     runs-on: ubuntu-latest
-    needs: [test]
+    timeout-minutes: 30
+    needs: [test, dependency-check, codeql]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -90,23 +149,14 @@ jobs:
   docker:
     name: Build and publish Docker images
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         platform:
-        #- linux/386
-        - linux/amd64
-        #- linux/amd64/v2
-        #- linux/amd64/v3
-        #- linux/arm/v6
-        #- linux/arm/v7
-        - linux/arm64
-        #- linux/mips64le
-        #- linux/mips64
-        #- linux/ppc64le
-        #- linux/riscv64
-        #- linux/s390x
-    needs: [test]
+          - linux/amd64
+          - linux/arm64
+    needs: [test, dependency-check, codeql]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -142,6 +192,19 @@ jobs:
       - name: Supported Architectures
         run: docker buildx ls
 
+      - name: Vulnerability Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
       - name: Build and publish image
         id: docker_build
         uses: docker/build-push-action@v5
@@ -155,9 +218,11 @@ jobs:
             BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
-          cache-from: type=gha
+          cache-from: |
+            type=gha
+            type=registry,ref=${{ env.REGISTRY_IMAGE }}:buildcache
           cache-to: type=gha,mode=max
-          provenance: false
+          provenance: true
 
       - name: Export image digest
         id: digest-prep
@@ -179,6 +244,7 @@ jobs:
     name: Publish Docker multi-arch manifest
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository || github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [docker, test]
     steps:
       - name: Download image digests
