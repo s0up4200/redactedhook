@@ -32,40 +32,34 @@ func validateRequestData(requestData *RequestData) error {
 	}
 
 	if requestData.TorrentID > 999_999_999 {
-		errMsg := fmt.Sprintf("invalid torrent ID: %d", requestData.TorrentID)
-		log.Debug().Msg(errMsg)
-		return fmt.Errorf(errMsg)
+		log.Debug().Int("torrentID", requestData.TorrentID).Msg("Invalid torrent ID")
+		return fmt.Errorf("invalid torrent ID: %d", requestData.TorrentID)
 	}
 
 	if len(requestData.REDKey) > 42 {
-		errMsg := "REDKey is too long"
-		log.Debug().Msg(errMsg)
-		return fmt.Errorf(errMsg)
+		log.Debug().Msg("REDKey is too long")
+		return fmt.Errorf("REDKey is too long")
 	}
 
 	if len(requestData.OPSKey) > 120 {
-		errMsg := "OPSKey is too long"
-		log.Debug().Msg(errMsg)
-		return fmt.Errorf(errMsg)
+		log.Debug().Msg("OPSKey is too long")
+		return fmt.Errorf("OPSKey is too long")
 	}
 
 	if requestData.MinRatio < 0 || requestData.MinRatio > 999.999 {
-		errMsg := "minRatio must be between 0 and 999.999"
-		log.Debug().Msg(errMsg)
-		return fmt.Errorf(errMsg)
+		log.Debug().Msg("minRatio must be between 0 and 999.999")
+		return fmt.Errorf("minRatio must be between 0 and 999.999")
 	}
 
 	if requestData.MaxSize > 0 && requestData.MinSize > requestData.MaxSize {
-		errMsg := "minSize cannot be greater than maxSize"
-		log.Debug().Msg(errMsg)
-		return fmt.Errorf(errMsg)
+		log.Debug().Msg("minSize cannot be greater than maxSize")
+		return fmt.Errorf("minSize cannot be greater than maxSize")
 	}
 
 	if requestData.Uploaders != "" {
 		if requestData.Mode != "whitelist" && requestData.Mode != "blacklist" {
-			errMsg := fmt.Sprintf("mode must be either 'whitelist' or 'blacklist', got '%s'", requestData.Mode)
-			log.Debug().Msg(errMsg)
-			return fmt.Errorf(errMsg)
+			log.Debug().Str("mode", requestData.Mode).Msg("Invalid mode")
+			return fmt.Errorf("mode must be either 'whitelist' or 'blacklist', got '%s'", requestData.Mode)
 		}
 	}
 
@@ -74,9 +68,8 @@ func validateRequestData(requestData *RequestData) error {
 		for _, label := range labels {
 			trimmedLabel := strings.TrimSpace(label)
 			if !safeCharacterRegex.MatchString(trimmedLabel) {
-				errMsg := "recordLabels field should only contain alphanumeric characters, spaces, and safe special characters"
-				log.Debug().Msg(errMsg)
-				return fmt.Errorf(errMsg)
+				log.Debug().Msg("Invalid record label format")
+				return fmt.Errorf("recordLabels field should only contain alphanumeric characters, spaces, and safe special characters")
 			}
 		}
 	}

@@ -14,7 +14,7 @@ func setupTestEnv() {
 	os.Clearenv()
 	viper.SetConfigType("toml")
 	viper.SetConfigFile("testconfig.toml")
-	viper.ReadConfig(bytes.NewReader([]byte(`
+	if err := viper.ReadConfig(bytes.NewReader([]byte(`
 	[authorization]
 	api_token = "test_token"
 	
@@ -52,7 +52,9 @@ func setupTestEnv() {
 	[server]
 	host = "127.0.0.1"
 	port = 42135
-	`)))
+	`))); err != nil {
+		panic("Failed to read test config: " + err.Error())
+	}
 }
 
 func TestValidateConfig(t *testing.T) {

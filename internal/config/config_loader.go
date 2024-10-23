@@ -226,7 +226,10 @@ func ValidateConfig() error {
 
 	port := viper.GetInt("server.port")
 	if envPort, exists := os.LookupEnv("REDACTEDHOOK__PORT"); exists {
-		fmt.Sscanf(envPort, "%d", &port)
+		var err error
+		if _, err = fmt.Sscanf(envPort, "%d", &port); err != nil {
+			validationErrors = append(validationErrors, "Invalid port number in environment variable")
+		}
 	}
 
 	if port <= 0 {

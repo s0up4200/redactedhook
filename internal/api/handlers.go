@@ -64,7 +64,10 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reqHeader := make(http.Header)
-	setAuthorizationHeader(&reqHeader, &requestData)
+	if err := setAuthorizationHeader(&reqHeader, &requestData); err != nil {
+		writeHTTPError(w, err, http.StatusInternalServerError)
+		return
+	}
 
 	if hookError := runHooks(&requestData, apiBase); hookError != nil {
 		handleErrors(w, hookError)

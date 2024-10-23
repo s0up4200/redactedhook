@@ -155,7 +155,9 @@ func loadEnvironmentConfig() {
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	if _, err := w.Write([]byte("OK")); err != nil {
+		log.Error().Err(err).Msg("Failed to write health check response")
+	}
 }
 
 func performHealthCheck() {
