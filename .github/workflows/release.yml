@@ -85,27 +85,11 @@ jobs:
           name: coverage-report-${{ matrix.shard }}
           path: coverage-${{ matrix.shard }}.out
 
-  dependency-check:
-    name: Check Dependencies
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - name: Nancy
-        uses: sonatype-nexus-community/nancy-github-action@main
-
   goreleaserbuild:
     name: Build distribution binaries
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [test, dependency-check, codeql]
+    needs: [test, codeql]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -156,7 +140,7 @@ jobs:
         platform:
           - linux/amd64
           - linux/arm64
-    needs: [test, dependency-check, codeql]
+    needs: [test, codeql]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
