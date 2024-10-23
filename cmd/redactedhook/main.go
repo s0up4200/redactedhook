@@ -27,6 +27,7 @@ var (
 
 const (
 	path              = "/hook"
+	healthPath        = "/health"
 	tokenLength       = 16
 	shutdownTimeout   = 10 * time.Second
 	readTimeout       = 10 * time.Second
@@ -57,6 +58,7 @@ func printHelp() {
 	fmt.Println("  generate-apitoken  Generate a new API token and print it.")
 	fmt.Println("  create-config      Create a default configuration file.")
 	fmt.Println("  help               Display this help message.")
+	fmt.Println("  health             Perform a health check on the service.")
 }
 
 func parseFlags() (string, bool) {
@@ -75,6 +77,9 @@ func parseFlags() (string, bool) {
 			return "", true
 		case "create-config":
 			config.CreateConfigFile()
+			return "", true
+		case "health":
+			performHealthCheck()
 			return "", true
 		case "help":
 			printHelp()
@@ -148,6 +153,28 @@ func loadEnvironmentConfig() {
 	config.GetConfig().IndexerKeys.OPSKey = getEnv("OPS_APIKEY", config.GetConfig().IndexerKeys.OPSKey)
 }
 
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
+func performHealthCheck() {
+	resp, err := http.Get("http://localhost:42135" + healthPath)
+	if err != nil {
+		fmt.Println("Unhealthy")
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		fmt.Println("Healthy")
+		os.Exit(0)
+	} else {
+		fmt.Println("Unhealthy")
+		os.Exit(1)
+	}
+}
+
 func main() {
 	initLogger()
 
@@ -165,6 +192,7 @@ func main() {
 	loadEnvironmentConfig()
 
 	http.HandleFunc(path, api.WebhookHandler)
+	http.HandleFunc(healthPath, healthHandler)
 
 	host := getEnv("HOST", config.GetConfig().Server.Host)
 	port := getEnv("PORT", fmt.Sprintf("%d", config.GetConfig().Server.Port))
