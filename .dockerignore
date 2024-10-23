@@ -4,3 +4,12 @@ distrib/
 .goreleaser.yml
 ci.Dockerfile
 Makefile
+.git/
+bin/
+README.md
+LICENSE
+docker-compose.yml
+Dockerfile
+*_test.go
+*.test
+*.out
