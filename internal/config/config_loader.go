@@ -188,33 +188,33 @@ func ValidateConfig() error {
 		validationErrors = append(validationErrors, "Indexer OPSKey should not be empty")
 	}
 
-	if !viper.IsSet("logs.loglevel") || viper.GetString("logs.loglevel") == "" {
-		validationErrors = append(validationErrors, "Log level is required")
-	}
-
-	if !viper.IsSet("logs.logtofile") {
-		validationErrors = append(validationErrors, "Log to file flag is required")
-	}
-
-	if viper.GetBool("logs.logtofile") && (!viper.IsSet("logs.logfilepath") || viper.GetString("logs.logfilepath") == "") {
-		validationErrors = append(validationErrors, "Log file path is required when logging to a file")
-	}
-
-	if !viper.IsSet("logs.maxsize") || viper.GetInt("logs.maxsize") <= 0 {
-		validationErrors = append(validationErrors, "Max log file size should be a positive integer")
-	}
-
-	if !viper.IsSet("logs.maxbackups") || viper.GetInt("logs.maxbackups") < 0 {
-		validationErrors = append(validationErrors, "Max backups should be a non-negative integer")
-	}
-
-	if !viper.IsSet("logs.maxage") || viper.GetInt("logs.maxage") <= 0 {
-		validationErrors = append(validationErrors, "Max age should be a positive integer")
-	}
-
-	if !viper.IsSet("logs.compress") {
-		validationErrors = append(validationErrors, "Compress flag is required")
-	}
+	//if !viper.IsSet("logs.loglevel") || viper.GetString("logs.loglevel") == "" {
+	//	validationErrors = append(validationErrors, "Log level is required")
+	//}
+	//
+	//if !viper.IsSet("logs.logtofile") {
+	//	validationErrors = append(validationErrors, "Log to file flag is required")
+	//}
+	//
+	//if viper.GetBool("logs.logtofile") && (!viper.IsSet("logs.logfilepath") || viper.GetString("logs.logfilepath") == "") {
+	//	validationErrors = append(validationErrors, "Log file path is required when logging to a file")
+	//}
+	//
+	//if !viper.IsSet("logs.maxsize") || viper.GetInt("logs.maxsize") <= 0 {
+	//	validationErrors = append(validationErrors, "Max log file size should be a positive integer")
+	//}
+	//
+	//if !viper.IsSet("logs.maxbackups") || viper.GetInt("logs.maxbackups") < 0 {
+	//	validationErrors = append(validationErrors, "Max backups should be a non-negative integer")
+	//}
+	//
+	//if !viper.IsSet("logs.maxage") || viper.GetInt("logs.maxage") <= 0 {
+	//	validationErrors = append(validationErrors, "Max age should be a positive integer")
+	//}
+	//
+	//if !viper.IsSet("logs.compress") {
+	//	validationErrors = append(validationErrors, "Compress flag is required")
+	//}
 
 	host := viper.GetString("server.host")
 	if envHost, exists := os.LookupEnv("REDACTEDHOOK__HOST"); exists {
