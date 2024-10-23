@@ -30,6 +30,15 @@ builds:
         goarch: arm64
     main: cmd/redactedhook/main.go
     binary: redactedhook
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -extldflags '-static'
+    mod_timestamp: '{{ .CommitTimestamp }}'
 
 archives:
   - id: redactedhook
@@ -44,6 +53,10 @@ archives:
       {{- .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - LICENSE
+      - README.md
+    wrap_in_directory: true
 
 release:
   prerelease: auto
@@ -51,26 +64,55 @@ release:
     **Full Changelog**: https://github.com/s0up4200/redactedhook/compare/{{ .PreviousTag }}...{{ .Tag }}
 
     ## Docker images
-
     - `docker pull ghcr.io/s0up4200/redactedhook:{{ .Tag }}`
+    - `docker pull ghcr.io/s0up4200/redactedhook:latest`
+
+    ## Checksums
+    SHA256 checksums for the artifacts are available in the checksums.txt file.
+
+    ## Installation
+    Download the appropriate binary for your system from the assets below.
 
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  algorithm: sha256
+
+source:
+  enabled: true
+  name_template: '{{ .ProjectName }}_{{ .Version }}_source'
+  format: 'zip'
 
 changelog:
   sort: asc
   use: github
   filters:
     exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
       - Merge pull request
       - Merge remote-tracking branch
       - Merge branch
+      - '^chore:'
+      - '^style:'
   groups:
-    - title: "New Features"
+    - title: '🚀 New Features'
       regexp: "^.*feat[(\\w)]*:+.*$"
       order: 0
-    - title: "Bug fixes"
+    - title: '🐛 Bug Fixes'
       regexp: "^.*fix[(\\w)]*:+.*$"
-      order: 10
-    - title: Other work
+      order: 1
+    - title: '🔒 Security'
+      regexp: "^.*security[(\\w)]*:+.*$"
+      order: 2
+    - title: '⚡ Performance'
+      regexp: "^.*perf[(\\w)]*:+.*$"
+      order: 3
+    - title: '♻️ Refactor'
+      regexp: "^.*refactor[(\\w)]*:+.*$"
+      order: 4
+    - title: '📦 Dependencies'
+      regexp: "^.*deps[(\\w)]*:+.*$"
+      order: 5
+    - title: 'Other Changes'
       order: 999

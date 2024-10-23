@@ -1,6 +1,6 @@
 module github.com/s0up4200/redactedhook
 
-go 1.23
+go 1.23.2
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0

@@ -24,7 +24,7 @@ host = "127.0.0.1" # Server host
 port = 42135       # Server port
 
 [authorization]
-api_token = "" # generate with "redactedhook generate-apitoken"
+api_token = "ch4ng3this" # generate with "redactedhook generate-apitoken"
 # the api_token needs to be set as a header for the webhook to work
 # eg. Header: X-API-Token=aaa129cd1d66ed6fa567da2d07a5dd0e
 
