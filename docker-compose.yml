@@ -14,11 +14,18 @@ services:
     cap_drop:
       - ALL
     environment:
-      #- REDACTEDHOOK__HOST=127.0.0.1     # Override the host from config.toml
-      #- REDACTEDHOOK__PORT=42135         # Override the port from config.toml
-      #- REDACTEDHOOK__API_TOKEN=         # Override the API token from config.toml
-      #- REDACTEDHOOK__RED_APIKEY=        # Override the red api_key from config.toml
-      #- REDACTEDHOOK__OPS_APIKEY=        # Override the ops api_key from config.toml
+      #- REDACTEDHOOK__HOST=127.0.0.1     # string: Override the host from config.toml
+      #- REDACTEDHOOK__PORT=42135         # integer: Override the port from config.toml
+      #- REDACTEDHOOK__API_TOKEN=         # string: Override the API token from config.toml
+      #- REDACTEDHOOK__RED_APIKEY=        # string: Override the red api_key from config.toml
+      #- REDACTEDHOOK__OPS_APIKEY=        # string: Override the ops api_key from config.toml
+      #- REDACTEDHOOK__LOGS_LOGLEVEL=     # string: Override the log level from config.toml
+      #- REDACTEDHOOK__LOGS_LOGTOFILE=    # boolean: Override log to file setting (true/false)
+      #- REDACTEDHOOK__LOGS_LOGFILEPATH=  # string: Override the log file path from config.toml
+      #- REDACTEDHOOK__LOGS_MAXSIZE=      # integer: Override max log file size in MB
+      #- REDACTEDHOOK__LOGS_MAXBACKUPS=   # integer: Override max number of old log files to keep
+      #- REDACTEDHOOK__LOGS_MAXAGE=       # integer: Override max age in days to keep log files
+      #- REDACTEDHOOK__LOGS_COMPRESS=     # boolean: Override log compression setting (true/false)
       - TZ=UTC
     ports:
       - 127.0.0.1:42135:42135
