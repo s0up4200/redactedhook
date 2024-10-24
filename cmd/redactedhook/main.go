@@ -27,7 +27,7 @@ var (
 
 const (
 	path              = "/hook"
-	healthPath        = "/health"
+	healthPath        = "/healthz"
 	tokenLength       = 16
 	shutdownTimeout   = 10 * time.Second
 	readTimeout       = 10 * time.Second
@@ -98,6 +98,22 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
+func hasRequiredEnvVars() bool {
+	// Check for essential environment variables
+	essentialVars := []string{
+		"API_TOKEN",
+		"RED_APIKEY",
+		"OPS_APIKEY",
+	}
+
+	for _, v := range essentialVars {
+		if _, exists := os.LookupEnv(envPrefix + v); !exists {
+			return false
+		}
+	}
+	return true
+}
+
 func initLogger() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05"})
 }
@@ -148,12 +164,49 @@ func startHTTPServer(ctx context.Context, address string) error {
 }
 
 func loadEnvironmentConfig() {
+	// Server settings
+	config.GetConfig().Server.Host = getEnv("HOST", config.GetConfig().Server.Host)
+	if port := os.Getenv(envPrefix + "PORT"); port != "" {
+		if val, err := fmt.Sscanf(port, "%d", &config.GetConfig().Server.Port); err != nil || val != 1 {
+			log.Warn().Msgf("Invalid PORT value: %s", port)
+		}
+	}
+
+	// Authorization settings
 	config.GetConfig().Authorization.APIToken = getEnv("API_TOKEN", config.GetConfig().Authorization.APIToken)
 	config.GetConfig().IndexerKeys.REDKey = getEnv("RED_APIKEY", config.GetConfig().IndexerKeys.REDKey)
 	config.GetConfig().IndexerKeys.OPSKey = getEnv("OPS_APIKEY", config.GetConfig().IndexerKeys.OPSKey)
+
+	// Logs settings
+	config.GetConfig().Logs.LogLevel = getEnv("LOGS_LOGLEVEL", config.GetConfig().Logs.LogLevel)
+	config.GetConfig().Logs.LogToFile = os.Getenv(envPrefix+"LOGS_LOGTOFILE") == "true"
+	config.GetConfig().Logs.LogFilePath = getEnv("LOGS_LOGFILEPATH", config.GetConfig().Logs.LogFilePath)
+
+	if maxSize := os.Getenv(envPrefix + "LOGS_MAXSIZE"); maxSize != "" {
+		if val, err := fmt.Sscanf(maxSize, "%d", &config.GetConfig().Logs.MaxSize); err != nil || val != 1 {
+			log.Warn().Msgf("Invalid LOGS_MAXSIZE value: %s", maxSize)
+		}
+	}
+	if maxBackups := os.Getenv(envPrefix + "LOGS_MAXBACKUPS"); maxBackups != "" {
+		if val, err := fmt.Sscanf(maxBackups, "%d", &config.GetConfig().Logs.MaxBackups); err != nil || val != 1 {
+			log.Warn().Msgf("Invalid LOGS_MAXBACKUPS value: %s", maxBackups)
+		}
+	}
+	if maxAge := os.Getenv(envPrefix + "LOGS_MAXAGE"); maxAge != "" {
+		if val, err := fmt.Sscanf(maxAge, "%d", &config.GetConfig().Logs.MaxAge); err != nil || val != 1 {
+			log.Warn().Msgf("Invalid LOGS_MAXAGE value: %s", maxAge)
+		}
+	}
+	config.GetConfig().Logs.Compress = os.Getenv(envPrefix+"LOGS_COMPRESS") == "true"
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().
+		Str("method", r.Method).
+		Str("remote_addr", r.RemoteAddr).
+		Str("user_agent", r.UserAgent()).
+		Msg("Health check request received")
+
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte("OK")); err != nil {
 		log.Error().Err(err).Msg("Failed to write health check response")
@@ -185,13 +238,34 @@ func main() {
 		return
 	}
 
-	config.InitConfig(configPath)
+	// Initialize with default values
+	config.GetConfig().Server.Host = "127.0.0.1"
+	config.GetConfig().Server.Port = 42135
+	config.GetConfig().Logs.LogLevel = "info"
+	config.GetConfig().Logs.MaxSize = 100 // 100MB
+	config.GetConfig().Logs.MaxBackups = 3
+	config.GetConfig().Logs.MaxAge = 28 // 28 days
+	config.GetConfig().Logs.LogFilePath = "redactedhook.log"
 
+	// Try to load config file if it exists
+	configFileExists := false
+	if _, err := os.Stat(configPath); err == nil {
+		config.InitConfig(configPath)
+		configFileExists = true
+	}
+
+	// If no config file and no environment variables, exit
+	if !configFileExists && !hasRequiredEnvVars() {
+		log.Fatal().Msg("No config file found and required environment variables are not set. Please provide either a config file or set the required environment variables (REDACTEDHOOK__API_TOKEN, REDACTEDHOOK__RED_APIKEY, REDACTEDHOOK__OPS_APIKEY)")
+	}
+
+	// Load environment variables (these will override config file values if present)
+	loadEnvironmentConfig()
+
+	// Validate the final configuration
 	if err := config.ValidateConfig(); err != nil {
 		log.Fatal().Err(err).Msg("Invalid configuration")
 	}
-
-	loadEnvironmentConfig()
 
 	http.HandleFunc(path, api.WebhookHandler)
 	http.HandleFunc(healthPath, healthHandler)
