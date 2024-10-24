@@ -27,7 +27,7 @@ var (
 
 const (
 	path              = "/hook"
-	healthPath        = "/health"
+	healthPath        = "/healthz"
 	tokenLength       = 16
 	shutdownTimeout   = 10 * time.Second
 	readTimeout       = 10 * time.Second
@@ -201,6 +201,12 @@ func loadEnvironmentConfig() {
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().
+		Str("method", r.Method).
+		Str("remote_addr", r.RemoteAddr).
+		Str("user_agent", r.UserAgent()).
+		Msg("Health check request received")
+
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write([]byte("OK")); err != nil {
 		log.Error().Err(err).Msg("Failed to write health check response")
