@@ -15,6 +15,7 @@ type Config struct {
 	RecordLabels  RecordLabels `mapstructure:"record_labels"`
 	Logs          Logs         `mapstructure:"logs"`
 	Server        Server       `mapstructure:"server"`
+	Notifications Notifications `mapstructure:"notifications"`
 }
 
 type Server struct {
@@ -67,4 +68,8 @@ type Logs struct {
 	MaxBackups  int    `mapstructure:"maxbackups"` // Max number of old log files to keep
 	MaxAge      int    `mapstructure:"maxage"`     // Max age in days to keep a log file
 	Compress    bool   `mapstructure:"compress"`   // Whether to compress old log files
+}
+
+type Notifications struct {
+	DiscordWebhookURL string `mapstructure:"discord_webhook_url"`
 }

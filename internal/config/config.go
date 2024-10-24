@@ -58,6 +58,9 @@ maxsize = 10                     # Max file size in MB
 maxbackups = 3                   # Max number of old log files to keep
 maxage = 28                      # Max age in days to keep a log file
 compress = false                 # Whether to compress old log files
+
+[notifications]
+discord_webhook_url = "" # URL for Discord webhook notifications
 `
 
 	err := os.WriteFile(defaultConfigFileName, []byte(config), 0644)

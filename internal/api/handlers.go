@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"errors"
 	"net/http"
 
@@ -76,6 +77,10 @@ func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	log.Info().Msgf("[%s] Conditions met, responding with status 200", requestData.Indexer)
+
+	if err := sendDiscordNotification("Request responded with HTTP 200"); err != nil {
+		log.Error().Err(err).Msg("Failed to send Discord notification")
+	}
 }
 
 func runHooks(requestData *RequestData, apiBase string) error {
@@ -138,4 +143,29 @@ func handleErrors(w http.ResponseWriter, err error) {
 		log.Error().Err(err).Msg("Unhandled error")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+}
+
+func sendDiscordNotification(message string) error {
+	webhookURL := config.GetConfig().Notifications.DiscordWebhookURL
+	if webhookURL == "" {
+		return nil
+	}
+
+	payload := map[string]string{"content": message}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("failed to send Discord notification: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("unexpected status code from Discord: %d", resp.StatusCode)
+	}
+
+	return nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -108,7 +109,7 @@ func hasRequiredEnvVars() bool {
 
 	for _, v := range essentialVars {
 		if _, exists := os.LookupEnv(envPrefix + v); !exists {
-			return false
+			return false;
 		}
 	}
 	return true
@@ -230,6 +231,31 @@ func performHealthCheck() {
 	}
 }
 
+func sendDiscordNotification(message string) error {
+	webhookURL := config.GetConfig().Notifications.DiscordWebhookURL
+	if webhookURL == "" {
+		return nil
+	}
+
+	payload := map[string]string{"content": message}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("failed to send Discord notification: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("unexpected status code from Discord: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
 func main() {
 	initLogger()
 
@@ -267,7 +293,14 @@ func main() {
 		log.Fatal().Err(err).Msg("Invalid configuration")
 	}
 
-	http.HandleFunc(path, api.WebhookHandler)
+	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		api.WebhookHandler(w, r)
+		if r.Method == http.MethodPost && r.Response.StatusCode == http.StatusOK {
+			if err := sendDiscordNotification("Request responded with HTTP 200"); err != nil {
+				log.Error().Err(err).Msg("Failed to send Discord notification")
+			}
+		}
+	})
 	http.HandleFunc(healthPath, healthHandler)
 
 	host := getEnv("HOST", config.GetConfig().Server.Host)
