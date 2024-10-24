@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/s0up4200/redactedhook/internal/config"
 )
 
 func TestSendDiscordNotification(t *testing.T) {

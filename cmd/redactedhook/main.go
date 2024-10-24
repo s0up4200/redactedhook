@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -109,7 +110,7 @@ func hasRequiredEnvVars() bool {
 
 	for _, v := range essentialVars {
 		if _, exists := os.LookupEnv(envPrefix + v); !exists {
-			return false;
+			return false
 		}
 	}
 	return true

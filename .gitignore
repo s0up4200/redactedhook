@@ -10,3 +10,4 @@ __debug_bin
 internal/config/testconfig_updated.toml
 coverage.html
 coverage.out
+redactedhook/config.toml
