@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	APIEndpointBaseRedacted = "https://redacted.ch/ajax.php"
+	APIEndpointBaseRedacted = "https://redacted.sh/ajax.php"
 	APIEndpointBaseOrpheus  = "https://orpheus.network/ajax.php"
 )
 
