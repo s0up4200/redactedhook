@@ -83,3 +83,57 @@ func TestWatchConfigChanges(t *testing.T) {
 
 	os.Remove("testconfig_updated.toml")
 }
+
+func TestValidateConfigWithPartialIndexers(t *testing.T) {
+	tests := []struct {
+		name        string
+		setupConfig func()
+		wantErr     bool
+		errMsg      string
+	}{
+		{
+			name: "only RED configured",
+			setupConfig: func() {
+				setupTestEnv()
+				viper.Set("indexer_keys.red_apikey", "valid_red_key")
+				viper.Set("indexer_keys.ops_apikey", "")
+			},
+			wantErr: false,
+		},
+		{
+			name: "only OPS configured",
+			setupConfig: func() {
+				setupTestEnv()
+				viper.Set("indexer_keys.red_apikey", "")
+				viper.Set("indexer_keys.ops_apikey", "valid_ops_key")
+			},
+			wantErr: false,
+		},
+		{
+			name: "no indexers configured",
+			setupConfig: func() {
+				setupTestEnv()
+				viper.Set("indexer_keys.red_apikey", "")
+				viper.Set("indexer_keys.ops_apikey", "")
+			},
+			wantErr: true,
+			errMsg:  "At least one indexer API key (RED or OPS) must be configured",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupConfig()
+			err := ValidateConfig()
+			
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
