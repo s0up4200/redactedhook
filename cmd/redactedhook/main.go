@@ -270,9 +270,7 @@ func main() {
 	http.HandleFunc(path, api.WebhookHandler)
 	http.HandleFunc(healthPath, healthHandler)
 
-	host := getEnv("HOST", config.GetConfig().Server.Host)
-	port := getEnv("PORT", fmt.Sprintf("%d", config.GetConfig().Server.Port))
-	address := fmt.Sprintf("%s:%s", host, port)
+	address := fmt.Sprintf("%s:%d", config.GetConfig().Server.Host, config.GetConfig().Server.Port)
 
 	// Create a root context for the application
 	ctx := context.Background()
