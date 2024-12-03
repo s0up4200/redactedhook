@@ -130,8 +130,14 @@ func determineAPIBase(indexer string) (string, error) {
 func getAPIKey(requestData *RequestData) (string, error) {
 	switch requestData.Indexer {
 	case "redacted":
+		if requestData.REDKey == "" {
+			return "", fmt.Errorf("RED API key is missing")
+		}
 		return requestData.REDKey, nil
 	case "ops":
+		if requestData.OPSKey == "" {
+			return "", fmt.Errorf("OPS API key is missing")
+		}
 		return requestData.OPSKey, nil
 	default:
 		return "", errors.New("invalid indexer")

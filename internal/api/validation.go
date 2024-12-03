@@ -31,6 +31,16 @@ func validateRequestData(requestData *RequestData) error {
 		return err
 	}
 
+	if requestData.Indexer == "redacted" && requestData.REDKey == "" {
+		log.Debug().Msg("Missing RED API key")
+		return fmt.Errorf("RED API key is required for Redacted indexer")
+	}
+
+	if requestData.Indexer == "ops" && requestData.OPSKey == "" {
+		log.Debug().Msg("Missing OPS API key")
+		return fmt.Errorf("OPS API key is required for Orpheus indexer")
+	}
+
 	if requestData.TorrentID > 999_999_999 {
 		log.Debug().Int("torrentID", requestData.TorrentID).Msg("Invalid torrent ID")
 		return fmt.Errorf("invalid torrent ID: %d", requestData.TorrentID)
