@@ -95,7 +95,7 @@ func initiateAPIRequest(id int, action, apiKey, apiBase, indexer string) (*Respo
 
 // fetchResponseData fetches response data from an API, checks the cache first, and caches the response data for future use.
 func fetchResponseData(requestData *RequestData, id int, action, apiBase string) (*ResponseData, error) {
-	cacheKey := fmt.Sprintf("%sID %d", action, id)
+	cacheKey := fmt.Sprintf("%s_%s_ID_%d", requestData.Indexer, action, id)
 	if cachedData, found := checkCache(cacheKey, requestData.Indexer); found {
 		return cachedData, nil
 	}

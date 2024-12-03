@@ -1,6 +1,7 @@
 dist/
 bin/
 .vscode
+.env
 
 __debug_bin
 .RedactedHook
