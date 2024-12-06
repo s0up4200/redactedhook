@@ -19,23 +19,39 @@ const (
 	APIEndpointBaseOrpheus  = "https://orpheus.network/ajax.php"
 )
 
-func makeRequest(endpoint, apiKey string, limiter *rate.Limiter, indexer string, target interface{}) error {
+type HTTPClient interface {
+	Do(*http.Request) (*http.Response, error)
+}
+
+type APIClient struct {
+	client  HTTPClient
+	limiter *rate.Limiter
+}
+
+func makeRequest(endpoint, apiKey string, client *APIClient, indexer string, target interface{}) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := limiter.Wait(ctx); err != nil {
-		log.Warn().Msgf("%s: Rate limit exceeded", indexer)
+	if err := client.limiter.Wait(ctx); err != nil {
+		log.Warn().
+			Str("indexer", indexer).
+			Err(err).
+			Msg("Rate limit exceeded")
 		return fmt.Errorf("rate limit exceeded for %s: %w", indexer, err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
-		log.Error().Err(err).Msg("Error creating HTTP request")
+		log.Error().
+			Str("indexer", indexer).
+			Str("endpoint", endpoint).
+			Err(err).
+			Msg("Error creating HTTP request")
 		return err
 	}
 	req.Header.Set("Authorization", apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.client.Do(req)
 	if err != nil {
 		log.Error().Err(err).Msg("Error executing HTTP request")
 		return err
@@ -78,9 +94,14 @@ func initiateAPIRequest(id int, action, apiKey, apiBase, indexer string) (*Respo
 		return nil, fmt.Errorf("could not get rate limiter for indexer: %s, %w", indexer, err)
 	}
 
+	client := &APIClient{
+		client:  http.DefaultClient,
+		limiter: limiter,
+	}
+
 	endpoint := fmt.Sprintf("%s?action=%s&id=%d", apiBase, action, id)
 	responseData := &ResponseData{}
-	if err := makeRequest(endpoint, apiKey, limiter, indexer, responseData); err != nil {
+	if err := makeRequest(endpoint, apiKey, client, indexer, responseData); err != nil {
 		return nil, err
 	}
 
