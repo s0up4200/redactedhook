@@ -213,14 +213,21 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func performHealthCheck() {
-	address := fmt.Sprintf("http://%s:%d%s",
-		config.GetConfig().Server.Host,
-		config.GetConfig().Server.Port,
-		healthPath)
+	host := "127.0.0.1"
+	port := 42135
+
+	if config.GetConfig().Server.Host != "" {
+		host = config.GetConfig().Server.Host
+	}
+	if config.GetConfig().Server.Port != 0 {
+		port = config.GetConfig().Server.Port
+	}
+
+	address := fmt.Sprintf("http://%s:%d%s", host, port, healthPath)
 
 	resp, err := http.Get(address)
 	if err != nil {
-		fmt.Println("Unhealthy")
+		fmt.Printf("Unhealthy: %v\n", err)
 		os.Exit(1)
 	}
 	defer resp.Body.Close()
@@ -229,7 +236,7 @@ func performHealthCheck() {
 		fmt.Println("Healthy")
 		os.Exit(0)
 	} else {
-		fmt.Println("Unhealthy")
+		fmt.Printf("Unhealthy: Status code %d\n", resp.StatusCode)
 		os.Exit(1)
 	}
 }
