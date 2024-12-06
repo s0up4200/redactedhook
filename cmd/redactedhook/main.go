@@ -35,7 +35,7 @@ const (
 	idleTimeout       = 120 * time.Second
 	readHeaderTimeout = 5 * time.Second
 	defaultConfigPath = "config.toml"
-	envPrefix         = "REDACTEDHOOK__"
+	envPrefix         = config.EnvPrefix
 )
 
 func generateAPIToken() (string, error) {
@@ -99,7 +99,6 @@ func getEnv(key, defaultValue string) string {
 }
 
 func hasRequiredEnvVars() bool {
-	// Check for essential environment variables
 	essentialVars := []string{
 		"API_TOKEN",
 		"RED_APIKEY",
@@ -166,7 +165,7 @@ func startHTTPServer(ctx context.Context, address string) error {
 func loadEnvironmentConfig() {
 	// Server settings
 	config.GetConfig().Server.Host = getEnv("HOST", config.GetConfig().Server.Host)
-	if port := os.Getenv(envPrefix + "PORT"); port != "" {
+	if port := getEnv("PORT", ""); port != "" {
 		if val, err := fmt.Sscanf(port, "%d", &config.GetConfig().Server.Port); err != nil || val != 1 {
 			log.Warn().Msgf("Invalid PORT value: %s", port)
 		}
@@ -179,25 +178,25 @@ func loadEnvironmentConfig() {
 
 	// Logs settings
 	config.GetConfig().Logs.LogLevel = getEnv("LOGS_LOGLEVEL", config.GetConfig().Logs.LogLevel)
-	config.GetConfig().Logs.LogToFile = os.Getenv(envPrefix+"LOGS_LOGTOFILE") == "true"
+	config.GetConfig().Logs.LogToFile = getEnv("LOGS_LOGTOFILE", "") == "true"
 	config.GetConfig().Logs.LogFilePath = getEnv("LOGS_LOGFILEPATH", config.GetConfig().Logs.LogFilePath)
 
-	if maxSize := os.Getenv(envPrefix + "LOGS_MAXSIZE"); maxSize != "" {
+	if maxSize := getEnv("LOGS_MAXSIZE", ""); maxSize != "" {
 		if val, err := fmt.Sscanf(maxSize, "%d", &config.GetConfig().Logs.MaxSize); err != nil || val != 1 {
 			log.Warn().Msgf("Invalid LOGS_MAXSIZE value: %s", maxSize)
 		}
 	}
-	if maxBackups := os.Getenv(envPrefix + "LOGS_MAXBACKUPS"); maxBackups != "" {
+	if maxBackups := getEnv("LOGS_MAXBACKUPS", ""); maxBackups != "" {
 		if val, err := fmt.Sscanf(maxBackups, "%d", &config.GetConfig().Logs.MaxBackups); err != nil || val != 1 {
 			log.Warn().Msgf("Invalid LOGS_MAXBACKUPS value: %s", maxBackups)
 		}
 	}
-	if maxAge := os.Getenv(envPrefix + "LOGS_MAXAGE"); maxAge != "" {
+	if maxAge := getEnv("LOGS_MAXAGE", ""); maxAge != "" {
 		if val, err := fmt.Sscanf(maxAge, "%d", &config.GetConfig().Logs.MaxAge); err != nil || val != 1 {
 			log.Warn().Msgf("Invalid LOGS_MAXAGE value: %s", maxAge)
 		}
 	}
-	config.GetConfig().Logs.Compress = os.Getenv(envPrefix+"LOGS_COMPRESS") == "true"
+	config.GetConfig().Logs.Compress = getEnv("LOGS_COMPRESS", "") == "true"
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -214,7 +213,12 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func performHealthCheck() {
-	resp, err := http.Get("http://localhost:42135" + healthPath)
+	address := fmt.Sprintf("http://%s:%d%s",
+		config.GetConfig().Server.Host,
+		config.GetConfig().Server.Port,
+		healthPath)
+
+	resp, err := http.Get(address)
 	if err != nil {
 		fmt.Println("Unhealthy")
 		os.Exit(1)
@@ -256,7 +260,8 @@ func main() {
 
 	// If no config file and no environment variables, exit
 	if !configFileExists && !hasRequiredEnvVars() {
-		log.Fatal().Msg("No config file found and required environment variables are not set. Please provide either a config file or set the required environment variables (REDACTEDHOOK__API_TOKEN, REDACTEDHOOK__RED_APIKEY, REDACTEDHOOK__OPS_APIKEY)")
+		log.Fatal().Msgf("No config file found and required environment variables are not set. Please provide either a config file or set the required environment variables (%s{API_TOKEN,RED_APIKEY,OPS_APIKEY})",
+			envPrefix)
 	}
 
 	// Load environment variables (these will override config file values if present)

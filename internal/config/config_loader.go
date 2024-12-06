@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const EnvPrefix = "REDACTEDHOOK__"
+
 func InitConfig(configPath string) {
 	configFile := determineConfigFile(configPath)
 	setupViper(configFile)
@@ -31,10 +33,19 @@ func setupViper(configFile string) {
 
 	viper.SetConfigType("toml")
 	viper.AutomaticEnv()
+	viper.SetEnvPrefix(EnvPrefix[:len(EnvPrefix)-2])
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AllowEmptyEnv(true)
 	viper.SetConfigFile(configFile)
 
-	if err := viper.ReadInConfig(); err != nil {
+	configContent, err := os.ReadFile(configFile)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error reading config file")
+	}
+
+	expandedConfig := os.ExpandEnv(string(configContent))
+
+	if err := viper.ReadConfig(strings.NewReader(expandedConfig)); err != nil {
 		log.Fatal().Err(err).Msg("Error reading config file")
 	}
 }
@@ -165,7 +176,7 @@ func ValidateConfig() error {
 	var validationErrors []string
 
 	apiToken := viper.GetString("authorization.api_token")
-	if envToken, exists := os.LookupEnv("REDACTEDHOOK__API_TOKEN"); exists {
+	if envToken, exists := os.LookupEnv(EnvPrefix + "API_TOKEN"); exists {
 		apiToken = envToken
 	}
 	if apiToken == "" {
@@ -173,12 +184,12 @@ func ValidateConfig() error {
 	}
 
 	redApiKey := viper.GetString("indexer_keys.red_apikey")
-	if envRedKey, exists := os.LookupEnv("REDACTEDHOOK__RED_APIKEY"); exists {
+	if envRedKey, exists := os.LookupEnv(EnvPrefix + "RED_APIKEY"); exists {
 		redApiKey = envRedKey
 	}
 
 	opsApiKey := viper.GetString("indexer_keys.ops_apikey")
-	if envOpsKey, exists := os.LookupEnv("REDACTEDHOOK__OPS_APIKEY"); exists {
+	if envOpsKey, exists := os.LookupEnv(EnvPrefix + "OPS_APIKEY"); exists {
 		opsApiKey = envOpsKey
 	}
 
@@ -187,7 +198,7 @@ func ValidateConfig() error {
 	}
 
 	host := viper.GetString("server.host")
-	if envHost, exists := os.LookupEnv("REDACTEDHOOK__HOST"); exists {
+	if envHost, exists := os.LookupEnv(EnvPrefix + "HOST"); exists {
 		host = envHost
 	}
 	if host == "" {
@@ -195,7 +206,7 @@ func ValidateConfig() error {
 	}
 
 	port := viper.GetInt("server.port")
-	if envPort, exists := os.LookupEnv("REDACTEDHOOK__PORT"); exists {
+	if envPort, exists := os.LookupEnv(EnvPrefix + "PORT"); exists {
 		var err error
 		if _, err = fmt.Sscanf(envPort, "%d", &port); err != nil {
 			validationErrors = append(validationErrors, "Invalid port number in environment variable")
