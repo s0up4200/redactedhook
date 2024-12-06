@@ -20,10 +20,10 @@ type CacheItem struct {
 var (
 	cache     = make(map[string]CacheItem)
 	cacheLock sync.RWMutex
+	done      = make(chan struct{}) // Channel to signal cleanup goroutine to stop
 )
 
 func init() {
-	// Start a background goroutine to periodically clean up expired cache entries.
 	go startCacheCleanup()
 }
 
@@ -50,9 +50,16 @@ func checkCache(cacheKey, indexer string) (*ResponseData, bool) {
 }
 
 func startCacheCleanup() {
+	ticker := time.NewTicker(cacheCleanupInterval)
+	defer ticker.Stop()
+
 	for {
-		time.Sleep(cacheCleanupInterval)
-		removeExpiredCacheEntries()
+		select {
+		case <-ticker.C:
+			removeExpiredCacheEntries()
+		case <-done:
+			return
+		}
 	}
 }
 
@@ -67,4 +74,9 @@ func removeExpiredCacheEntries() {
 			//log.Trace().Msgf("Removed expired cache entry for %s", key)
 		}
 	}
+}
+
+// StopCache stops the cleanup goroutine gracefully
+func StopCache() {
+	close(done)
 }
