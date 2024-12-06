@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/rs/zerolog/log"
+
 	"github.com/s0up4200/redactedhook/internal/config"
 )
 
@@ -24,58 +25,70 @@ const (
 	ErrRatioBelowMinimum     = "returned ratio is below minimum requirement"
 )
 
+type validationError struct {
+	err    error
+	status int
+}
+
 func WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	cfg := config.GetConfig()
 	var requestData RequestData
-	fallbackToConfig(&requestData)
 
-	if err := verifyAPIKey(r.Header.Get("X-API-Token"), cfg.Authorization.APIToken); err != nil {
-		writeHTTPError(w, err, http.StatusUnauthorized)
-		return
-	}
-
-	if err := validateRequestMethod(r.Method); err != nil {
-		writeHTTPError(w, err, http.StatusBadRequest)
-		return
-	}
-
-	if err := decodeJSONPayload(r, &requestData); err != nil {
-		writeHTTPError(w, err, http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	if err := validateIndexer(requestData.Indexer); err != nil {
-		writeHTTPError(w, err, http.StatusBadRequest)
-		return
-	}
-
-	if err := validateRequestData(&requestData); err != nil {
-		writeHTTPError(w, err, http.StatusBadRequest)
+	if err := validateRequest(r, cfg, &requestData); err != nil {
+		writeHTTPError(w, err.err, err.status)
 		return
 	}
 
 	log.Info().Msgf("Received data request from %s", r.RemoteAddr)
 
-	apiBase, err := determineAPIBase(requestData.Indexer)
-	if err != nil {
-		writeHTTPError(w, err, http.StatusNotFound)
-		return
-	}
-
-	reqHeader := make(http.Header)
-	if err := setAuthorizationHeader(&reqHeader, &requestData); err != nil {
-		writeHTTPError(w, err, http.StatusInternalServerError)
-		return
-	}
-
-	if hookError := runHooks(&requestData, apiBase); hookError != nil {
-		handleErrors(w, hookError)
+	if err := processRequest(&requestData); err != nil {
+		handleErrors(w, err)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	log.Info().Msgf("[%s] Conditions met, responding with status 200", requestData.Indexer)
+}
+
+func validateRequest(r *http.Request, cfg *config.Config, requestData *RequestData) *validationError {
+	fallbackToConfig(requestData)
+
+	if err := verifyAPIKey(r.Header.Get("X-API-Token"), cfg.Authorization.APIToken); err != nil {
+		return &validationError{err, http.StatusUnauthorized}
+	}
+
+	if err := validateRequestMethod(r.Method); err != nil {
+		return &validationError{err, http.StatusBadRequest}
+	}
+
+	if err := decodeJSONPayload(r, requestData); err != nil {
+		return &validationError{err, http.StatusBadRequest}
+	}
+	defer r.Body.Close()
+
+	if err := validateIndexer(requestData.Indexer); err != nil {
+		return &validationError{err, http.StatusBadRequest}
+	}
+
+	if err := validateRequestData(requestData); err != nil {
+		return &validationError{err, http.StatusBadRequest}
+	}
+
+	return nil
+}
+
+func processRequest(requestData *RequestData) error {
+	apiBase, err := determineAPIBase(requestData.Indexer)
+	if err != nil {
+		return err
+	}
+
+	reqHeader := make(http.Header)
+	if err := setAuthorizationHeader(&reqHeader, requestData); err != nil {
+		return err
+	}
+
+	return runHooks(requestData, apiBase)
 }
 
 func runHooks(requestData *RequestData, apiBase string) error {
