@@ -107,8 +107,7 @@ func initiateAPIRequest(id int, action, apiKey, apiBase, indexer string) (*Respo
 
 	if action == "torrent" && responseData.Response.Torrent != nil {
 		releaseName := html.UnescapeString(responseData.Response.Torrent.ReleaseName)
-		uploader := responseData.Response.Torrent.Username
-		log.Debug().Msgf("[%s] Checking release: %s - (Uploader: %s) (TorrentID: %d)", indexer, releaseName, uploader, id)
+		log.Debug().Msgf("[%s] Checking release: %s - (TorrentID: %d)", indexer, releaseName, id)
 	}
 
 	return responseData, nil

@@ -71,7 +71,7 @@ func removeExpiredCacheEntries() {
 	for key, item := range cache {
 		if now.Sub(item.LastFetched) >= cacheExpiryDuration {
 			delete(cache, key)
-			//log.Trace().Msgf("Removed expired cache entry for %s", key)
+			// log.Trace().Msgf("Removed expired cache entry for %s", key)
 		}
 	}
 }

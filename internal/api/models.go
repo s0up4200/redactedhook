@@ -1,20 +1,14 @@
 package api
 
-import "github.com/inhies/go-bytesize"
-
 type RequestData struct {
-	REDUserID   int               `json:"red_user_id,omitempty"`
-	OPSUserID   int               `json:"ops_user_id,omitempty"`
-	TorrentID   int               `json:"torrent_id,omitempty"`
-	REDKey      string            `json:"red_apikey,omitempty"`
-	OPSKey      string            `json:"ops_apikey,omitempty"`
-	MinRatio    float64           `json:"minratio,omitempty"`
-	MinSize     bytesize.ByteSize `json:"minsize,omitempty"`
-	MaxSize     bytesize.ByteSize `json:"maxsize,omitempty"`
-	Uploaders   string            `json:"uploaders,omitempty"`
-	RecordLabel string            `json:"record_labels,omitempty"`
-	Mode        string            `json:"mode,omitempty"`
-	Indexer     string            `json:"indexer"`
+	REDUserID   int     `json:"red_user_id,omitempty"`
+	OPSUserID   int     `json:"ops_user_id,omitempty"`
+	TorrentID   int     `json:"torrent_id,omitempty"`
+	REDKey      string  `json:"red_apikey,omitempty"`
+	OPSKey      string  `json:"ops_apikey,omitempty"`
+	MinRatio    float64 `json:"minratio,omitempty"`
+	RecordLabel string  `json:"record_labels,omitempty"`
+	Indexer     string  `json:"indexer"`
 }
 
 type ResponseData struct {

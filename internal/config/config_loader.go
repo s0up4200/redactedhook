@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/inhies/go-bytesize"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -25,10 +24,6 @@ func setupViper(configFile string) {
 	viper.SetDefault("userid.red_user_id", 0)
 	viper.SetDefault("userid.ops_user_id", 0)
 	viper.SetDefault("ratio.minratio", 0)
-	viper.SetDefault("sizecheck.minsize", "")
-	viper.SetDefault("sizecheck.maxsize", "")
-	viper.SetDefault("uploaders.uploaders", "")
-	viper.SetDefault("uploaders.mode", "")
 	viper.SetDefault("record_labels.record_labels", "")
 
 	viper.SetConfigType("toml")
@@ -54,33 +49,8 @@ func readAndUnmarshalConfig() {
 	if err := viper.Unmarshal(&config); err != nil {
 		log.Error().Err(err).Msg("Unable to unmarshal config")
 	} else {
-		parseSizeCheck()
 		log.Debug().Msgf("Config file read: %s", viper.ConfigFileUsed())
 		configureLogger()
-	}
-}
-
-func parseSizeCheck() {
-	minSizeStr := viper.GetString("sizecheck.minsize")
-	if minSizeStr == "" {
-		config.ParsedSizes.MinSize = 0
-	} else {
-		if minSize, err := bytesize.Parse(minSizeStr); err != nil {
-			log.Error().Err(err).Msg("Invalid format for MinSize; unable to parse")
-		} else {
-			config.ParsedSizes.MinSize = minSize
-		}
-	}
-
-	maxSizeStr := viper.GetString("sizecheck.maxsize")
-	if maxSizeStr == "" {
-		config.ParsedSizes.MaxSize = 0
-	} else {
-		if maxSize, err := bytesize.Parse(maxSizeStr); err != nil {
-			log.Error().Err(err).Msg("Invalid format for MaxSize; unable to parse")
-		} else {
-			config.ParsedSizes.MaxSize = maxSize
-		}
 	}
 }
 
@@ -103,7 +73,6 @@ func handleConfigChange(e fsnotify.Event) {
 		return
 	}
 
-	parseSizeCheck()
 	logConfigChanges(oldConfig, config)
 
 	if oldConfig.Logs.LogLevel != config.Logs.LogLevel {
@@ -133,22 +102,6 @@ func logConfigChanges(oldConfig, newConfig Config) {
 	if oldConfig.Ratio.MinRatio != newConfig.Ratio.MinRatio {
 		log.Debug().Msgf("MinRatio changed from %f to %f", oldConfig.Ratio.MinRatio, newConfig.Ratio.MinRatio)
 	}
-
-	if oldConfig.ParsedSizes.MinSize != newConfig.ParsedSizes.MinSize {
-		log.Debug().Msgf("MinSize changed from %s to %s", oldConfig.ParsedSizes.MinSize, newConfig.ParsedSizes.MinSize)
-	}
-
-	if oldConfig.ParsedSizes.MaxSize != newConfig.ParsedSizes.MaxSize {
-		log.Debug().Msgf("MaxSize changed from %s to %s", oldConfig.ParsedSizes.MaxSize, newConfig.ParsedSizes.MaxSize)
-	}
-
-	if oldConfig.Uploaders.Uploaders != newConfig.Uploaders.Uploaders {
-		log.Debug().Msgf("Uploaders changed from %s to %s", oldConfig.Uploaders.Uploaders, newConfig.Uploaders.Uploaders)
-	}
-	if oldConfig.Uploaders.Mode != newConfig.Uploaders.Mode {
-		log.Debug().Msgf("Uploader mode changed from %s to %s", oldConfig.Uploaders.Mode, newConfig.Uploaders.Mode)
-	}
-
 	if oldConfig.Logs.LogLevel != newConfig.Logs.LogLevel {
 		log.Debug().Msgf("Log level changed from %s to %s", oldConfig.Logs.LogLevel, newConfig.Logs.LogLevel)
 	}

@@ -29,14 +29,6 @@ func setupTestEnv() {
 	[ratio]
 	minratio = 0.5
 	
-	[sizecheck]
-	minsize = "10MB"
-	maxsize = "1GB"
-	
-	[uploaders]
-	uploaders = "test_uploader"
-	mode = "whitelist"
-	
 	[record_labels]
 	record_labels = "test_label"
 	
@@ -125,7 +117,7 @@ func TestValidateConfigWithPartialIndexers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setupConfig()
 			err := ValidateConfig()
-			
+
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errMsg != "" {

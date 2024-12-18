@@ -5,28 +5,8 @@ import (
 	"html"
 	"strings"
 
-	"github.com/inhies/go-bytesize"
 	"github.com/rs/zerolog/log"
 )
-
-func hookUploader(requestData *RequestData, apiBase string) error {
-	torrentData, err := fetchResponseData(requestData, requestData.TorrentID, "torrent", apiBase)
-	if err != nil {
-		return err
-	}
-
-	username := strings.ToLower(torrentData.Response.Torrent.Username)
-	usernames := parseAndTrimList(requestData.Uploaders)
-
-	log.Trace().Msgf("[%s] Requested uploaders [%s]: %s", requestData.Indexer, requestData.Mode, strings.Join(usernames, ", "))
-
-	isListed := stringInSlice(username, usernames)
-	if (requestData.Mode == "blacklist" && isListed) || (requestData.Mode == "whitelist" && !isListed) {
-		log.Debug().Msgf("[%s] Uploader (%s) is not allowed", requestData.Indexer, username)
-		return fmt.Errorf("uploader is not allowed")
-	}
-	return nil
-}
 
 func hookRecordLabel(requestData *RequestData, apiBase string) error {
 	requestedRecordLabels := parseAndTrimList(requestData.RecordLabel)
@@ -48,25 +28,6 @@ func hookRecordLabel(requestData *RequestData, apiBase string) error {
 	if !stringInSlice(recordLabel, requestedRecordLabels) {
 		log.Debug().Msgf("[%s] The record label '%s' is not included in the requested record labels: [%s]", requestData.Indexer, recordLabel, strings.Join(requestedRecordLabels, ", "))
 		return fmt.Errorf("record label not allowed")
-	}
-
-	return nil
-}
-
-func hookSize(requestData *RequestData, apiBase string) error {
-	torrentData, err := fetchResponseData(requestData, requestData.TorrentID, "torrent", apiBase)
-	if err != nil {
-		return err
-	}
-
-	torrentSize := bytesize.ByteSize(torrentData.Response.Torrent.Size)
-
-	log.Trace().Msgf("[%s] Torrent size: %s, Requested size range: %s - %s", requestData.Indexer, torrentSize, requestData.MinSize, requestData.MaxSize)
-
-	if (requestData.MinSize != 0 && torrentSize < requestData.MinSize) ||
-		(requestData.MaxSize != 0 && torrentSize > requestData.MaxSize) {
-		log.Debug().Msgf("[%s] Torrent size %s is outside the requested size range: %s to %s", requestData.Indexer, torrentSize, requestData.MinSize, requestData.MaxSize)
-		return fmt.Errorf("torrent size is outside the requested size range")
 	}
 
 	return nil

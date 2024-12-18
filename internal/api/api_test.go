@@ -20,23 +20,6 @@ func TestValidateRequestData(t *testing.T) {
 			errMsg:  "no indexer provided",
 		},
 		{
-			name: "Valid request",
-			request: RequestData{
-				Indexer:     "ops",
-				TorrentID:   123,
-				REDKey:      "123456789012345678901234567890123456789012",
-				OPSKey:      "123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012",
-				MinRatio:    1.0,
-				MinSize:     0,
-				MaxSize:     10,
-				Uploaders:   "uploader1",
-				RecordLabel: "label1",
-				Mode:        "blacklist",
-			},
-			wantErr: false,
-			errMsg:  "",
-		},
-		{
 			name:    "Invalid indexer",
 			request: RequestData{Indexer: "invalid"},
 			wantErr: true,
@@ -109,16 +92,6 @@ func TestValidateRequestData(t *testing.T) {
 			},
 			wantErr: false,
 			errMsg:  "",
-		},
-		{
-			name: "Empty mode with uploaders",
-			request: RequestData{
-				Indexer:   "ops",
-				Uploaders: "uploader1",
-				OPSKey:    "validkey123",
-			},
-			wantErr: true,
-			errMsg:  "mode must be either 'whitelist' or 'blacklist', got ''",
 		},
 		{
 			name: "Empty RecordLabel field",

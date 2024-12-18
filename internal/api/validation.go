@@ -61,18 +61,6 @@ func validateRequestData(requestData *RequestData) error {
 		return fmt.Errorf("minRatio must be between 0 and 999.999")
 	}
 
-	if requestData.MaxSize > 0 && requestData.MinSize > requestData.MaxSize {
-		log.Debug().Msg("minSize cannot be greater than maxSize")
-		return fmt.Errorf("minSize cannot be greater than maxSize")
-	}
-
-	if requestData.Uploaders != "" {
-		if requestData.Mode != "whitelist" && requestData.Mode != "blacklist" {
-			log.Debug().Str("mode", requestData.Mode).Msg("Invalid mode")
-			return fmt.Errorf("mode must be either 'whitelist' or 'blacklist', got '%s'", requestData.Mode)
-		}
-	}
-
 	if requestData.RecordLabel != "" {
 		labels := strings.Split(requestData.RecordLabel, ",")
 		for _, label := range labels {

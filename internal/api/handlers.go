@@ -10,18 +10,14 @@ import (
 )
 
 const (
-	StatusUploaderNotAllowed = http.StatusIMUsed + 1
-	StatusLabelNotAllowed    = http.StatusIMUsed + 2
-	StatusSizeNotAllowed     = http.StatusIMUsed + 3
-	StatusRatioNotAllowed    = http.StatusIMUsed
+	StatusLabelNotAllowed = http.StatusIMUsed + 1
+	StatusRatioNotAllowed = http.StatusIMUsed
 )
 
 const (
 	ErrInvalidJSONResponse   = "invalid JSON response"
 	ErrRecordLabelNotFound   = "record label not found"
 	ErrRecordLabelNotAllowed = "record label not allowed"
-	ErrUploaderNotAllowed    = "uploader is not allowed"
-	ErrSizeNotAllowed        = "torrent size is outside the requested size range"
 	ErrRatioBelowMinimum     = "returned ratio is below minimum requirement"
 )
 
@@ -92,18 +88,6 @@ func processRequest(requestData *RequestData) error {
 }
 
 func runHooks(requestData *RequestData, apiBase string) error {
-	if requestData.TorrentID != 0 && (requestData.MinSize != 0 || requestData.MaxSize != 0) {
-		if err := hookSize(requestData, apiBase); err != nil {
-			return errors.New(ErrSizeNotAllowed)
-		}
-	}
-
-	if requestData.TorrentID != 0 && requestData.Uploaders != "" {
-		if err := hookUploader(requestData, apiBase); err != nil {
-			return errors.New(ErrUploaderNotAllowed)
-		}
-	}
-
 	if requestData.TorrentID != 0 && requestData.RecordLabel != "" {
 		if err := hookRecordLabel(requestData, apiBase); err != nil {
 			return errors.New(ErrRecordLabelNotAllowed)
@@ -137,12 +121,6 @@ func handleErrors(w http.ResponseWriter, err error) {
 
 	case ErrRecordLabelNotAllowed:
 		http.Error(w, ErrRecordLabelNotAllowed, http.StatusForbidden)
-
-	case ErrUploaderNotAllowed:
-		http.Error(w, ErrUploaderNotAllowed, http.StatusForbidden)
-
-	case ErrSizeNotAllowed:
-		http.Error(w, ErrSizeNotAllowed, http.StatusBadRequest)
 
 	case ErrRatioBelowMinimum:
 		http.Error(w, ErrRatioBelowMinimum, http.StatusForbidden)

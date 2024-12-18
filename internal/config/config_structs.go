@@ -1,7 +1,5 @@
 package config
 
-import "github.com/inhies/go-bytesize"
-
 var config Config
 
 type Config struct {
@@ -9,12 +7,9 @@ type Config struct {
 	Authorization Authorization `mapstructure:"authorization"`
 	UserIDs       UserIDs       `mapstructure:"userid"`
 	Ratio         Ratio         `mapstructure:"ratio"`
-	SizeCheck     SizeCheck     `mapstructure:"sizecheck"`
-	ParsedSizes   ParsedSizeCheck
-	Uploaders     Uploaders    `mapstructure:"uploaders"`
-	RecordLabels  RecordLabels `mapstructure:"record_labels"`
-	Logs          Logs         `mapstructure:"logs"`
-	Server        Server       `mapstructure:"server"`
+	RecordLabels  RecordLabels  `mapstructure:"record_labels"`
+	Logs          Logs          `mapstructure:"logs"`
+	Server        Server        `mapstructure:"server"`
 }
 
 type Server struct {
@@ -38,21 +33,6 @@ type UserIDs struct {
 
 type Ratio struct {
 	MinRatio float64 `mapstructure:"minratio"`
-}
-
-type SizeCheck struct {
-	MinSize string `mapstructure:"minsize"`
-	MaxSize string `mapstructure:"maxsize"`
-}
-
-type ParsedSizeCheck struct {
-	MinSize bytesize.ByteSize
-	MaxSize bytesize.ByteSize
-}
-
-type Uploaders struct {
-	Uploaders string `mapstructure:"uploaders"`
-	Mode      string `mapstructure:"mode"`
 }
 
 type RecordLabels struct {

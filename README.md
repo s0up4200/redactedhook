@@ -1,6 +1,6 @@
 # RedactedHook
 
-RedactedHook is a webhook companion service for [autobrr](https://github.com/autobrr/autobrr) designed to check the names of uploaders, your ratio, torrent size and record labels associated with torrents on **Redacted** and **Orpheus**. It provides a simple and efficient way to validate if uploaders are blacklisted or whitelisted, to stop racing in case your ratio falls below a certain point, and to verify if a torrent's record label matches against a specified list.
+RedactedHook is a webhook companion service for [autobrr](https://github.com/autobrr/autobrr) designed to check your ratio and record labels associated with torrents on **Redacted** and **Orpheus**. It provides a simple and efficient way to to stop racing in case your ratio falls below a certain point, and to verify if a torrent's record label matches against a specified list.
 
 ## Table of Contents
 
@@ -20,10 +20,8 @@ RedactedHook is a webhook companion service for [autobrr](https://github.com/aut
 
 ## Features
 
-- Verify if an uploader's name is on a provided whitelist or blacklist.
 - Check for record labels. Useful for grabbing torrents from a specific record label.
 - Check if a user's ratio meets a specified minimum value.
-- Check the torrentSize (Useful for not hitting the API from both autobrr and redactedhook).
 - Easy to integrate with other applications via webhook.
 - Rate-limited to comply with tracker API request policies.
   - With a 5-minute data cache to reduce frequent API calls for the same data.
@@ -36,8 +34,8 @@ It was made with [autobrr](https://github.com/autobrr/autobrr) in mind.
 
 > \[!IMPORTANT]
 >
-> Remember that autobrr also checks the RED/OPS API if you have min/max sizes set. This will result in you hitting the API 2x.
-> So for your own good, **only** set size checks in RedactedHook.
+> Remember that autobrr also checks the RED/OPS API. This will result in you hitting the API 2x if your autobrr filter is set to check for uploaders and/or sizes.
+> So for your own good, if you want to use the ratio watch or filter by record labels in redactedhook, **do not** set uploaders and/or sizes in your autobrr filters.
 
 ## Installation
 
@@ -123,8 +121,6 @@ Method: POST
 Expected HTTP Status: 200
 ```
 
-You can check ratio, uploader (whitelist and blacklist), minsize, maxsize, and record labels in a single request, or separately.
-
 ### Commands
 
 - `generate-apitoken`: Generate a new API token and print it.
@@ -156,14 +152,6 @@ api_token = "" # generate with "redactedhook generate-apitoken"
 [ratio]
 #minratio = 0.6 # reject releases if you are below this ratio
 
-[sizecheck]
-#minsize = "100MB" # minimum size for checking, e.g., "10MB"
-#maxsize = "500MB" # maximum size for checking, e.g., "1GB"
-
-[uploaders]
-#uploaders = "greatest-uploader" # comma separated list of uploaders to allow
-#mode = "whitelist" # whitelist or blacklist
-
 [record_labels]
 #record_labels = "" # comma separated list of record labels to filter for
 
@@ -183,7 +171,7 @@ API Token can be generated like this: `redactedhook generate-apitoken`
 
 Set it in the config, and use it as a header like:
 
-![autobrr-external-filter-example](<.github/images/autobrr-external-filters.png>)
+![autobrr-external-filter-example](.github/images/autobrr-external-filters.png)
 
 `CURL` if you want to test:
 
@@ -191,7 +179,7 @@ Set it in the config, and use it as a header like:
 curl -X POST \
      -H "X-API-Token: 098qw0e98ass" \
      -H "Content-Type: application/json" \
-     -d '{"torrent_id": 12345, "indexer": "ops", "uploaders": "the_worst_uploader,thebestuploader", "mode": "blacklist"}' \
+     -d '{"torrent_id": 12345, "indexer": "ops"}' \
      http://127.0.0.1:42135/hook
 ```
 
@@ -218,8 +206,3 @@ Everything else can be set in the config.toml, but you can set them in the webho
 - `red_apikey` is your Redacted API key. Needs user and torrents privileges.
 - `ops_apikey` is your Orpheus API key. Needs user and torrents privileges.
 - `record_labels` is a comma-separated list of record labels to check against.
-- `minsize` is the minimum allowed size you want to grab. Eg. 100MB
-- `maxsize` is the max allowed size you want to grab. Eg. 500MB
-- `uploaders` is a comma-separated list of uploaders to check against.
-- `mode` is either blacklist or whitelist. If blacklist is used, the torrent will be stopped if the uploader is found in the list. If whitelist is used, the torrent will be stopped if the uploader is not found in the list.
-  `

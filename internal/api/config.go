@@ -1,7 +1,6 @@
 package api
 
 import (
-	"github.com/inhies/go-bytesize"
 	"github.com/s0up4200/redactedhook/internal/config"
 )
 
@@ -23,12 +22,6 @@ func fallbackToConfig(requestData *RequestData) {
 		}
 	}
 
-	setByteSize := func(webhookField *bytesize.ByteSize, configValue bytesize.ByteSize) {
-		if *webhookField == 0 {
-			*webhookField = configValue
-		}
-	}
-
 	setString := func(webhookField *string, configValue string) {
 		if *webhookField == "" {
 			*webhookField = configValue
@@ -41,9 +34,5 @@ func fallbackToConfig(requestData *RequestData) {
 	setString(&requestData.REDKey, cfg.IndexerKeys.REDKey)
 	setString(&requestData.OPSKey, cfg.IndexerKeys.OPSKey)
 	setFloat64(&requestData.MinRatio, cfg.Ratio.MinRatio)
-	setByteSize(&requestData.MinSize, cfg.ParsedSizes.MinSize)
-	setByteSize(&requestData.MaxSize, cfg.ParsedSizes.MaxSize)
-	setString(&requestData.Uploaders, cfg.Uploaders.Uploaders)
-	setString(&requestData.Mode, cfg.Uploaders.Mode)
 	setString(&requestData.RecordLabel, cfg.RecordLabels.RecordLabels)
 }
